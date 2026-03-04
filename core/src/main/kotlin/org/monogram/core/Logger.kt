@@ -1,4 +1,4 @@
-package com.bettergram.core
+package org.monogram.core
 
 interface Logger {
     fun d(tag: String, message: String)

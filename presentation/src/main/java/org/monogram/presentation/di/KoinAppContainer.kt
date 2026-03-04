@@ -2,7 +2,7 @@ package org.monogram.presentation.di
 
 import android.content.Context
 import coil3.ImageLoader
-import com.bettergram.core.DispatcherProvider
+import org.monogram.core.DispatcherProvider
 import kotlinx.coroutines.CoroutineScope
 import org.koin.core.Koin
 import org.monogram.domain.managers.*
