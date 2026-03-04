@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="confirmation_title">Confirmation</string>
+    <string name="confirmation_message">Do you really want to authorize this device?</string>
+    <string name="confirm_auth_action">Yes, sign in</string>
+    <string name="cancel_action">Cancel</string>
+
+    <string name="scan_qr_title">Scan QR</string>
+    <string name="devices_title">Devices</string>
+    <string name="link_device_action">Link a device</string>
+
+    <string name="current_device_section">This device</string>
+    <string name="login_requests_section">Login requests</string>
+    <string name="active_sessions_section">Active sessions</string>
+
+    <string name="cd_navigate_back">Navigate back</string>
+    <string name="cd_close_scanner">Close scanner</string>
+    <string name="cd_qr_icon">QR Scanner icon</string>
+</resources>

@@ -1,0 +1,3 @@
+[submodule "presentation/src/main/cpp/third_party/libvpx"]
+	path = presentation/src/main/cpp/third_party/libvpx
+	url = https://github.com/webmproject/libvpx.git

@@ -1,0 +1,3 @@
+package org.monogram.presentation.util
+
+class CollapsingToolbarScaffold

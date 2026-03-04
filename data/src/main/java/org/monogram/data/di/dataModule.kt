@@ -1,0 +1,320 @@
+package org.monogram.data.di
+
+import android.content.Context
+import android.net.ConnectivityManager
+import com.bettergram.core.DispatcherProvider
+import com.bettergram.core.ScopeProvider
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import org.koin.android.ext.koin.androidContext
+import org.koin.dsl.module
+import org.monogram.data.chats.ChatCache
+import org.monogram.data.chats.ChatMapper
+import org.monogram.data.datasource.FileDataSource
+import org.monogram.data.datasource.PlayerDataSourceFactoryImpl
+import org.monogram.data.datasource.TdFileDataSource
+import org.monogram.data.datasource.cache.*
+import org.monogram.data.datasource.remote.*
+import org.monogram.data.gateway.TelegramGateway
+import org.monogram.data.gateway.TelegramGatewayImpl
+import org.monogram.data.gateway.UpdateDispatcher
+import org.monogram.data.gateway.UpdateDispatcherImpl
+import org.monogram.data.infra.*
+import org.monogram.data.mapper.MessageMapper
+import org.monogram.data.repository.*
+import org.monogram.domain.repository.*
+
+val dataModule = module {
+    single { CoroutineScope(SupervisorJob() + Dispatchers.IO) }
+
+    single { TdLibClient(androidContext()) }
+
+    single<DispatcherProvider> { DefaultDispatcherProvider() }
+    single<ScopeProvider> { DefaultScopeProvider(get()) }
+
+    single { ChatCache() }
+    single<TelegramGateway> {
+        TelegramGatewayImpl(get())
+    }
+    single<UpdateDispatcher> {
+        UpdateDispatcherImpl(
+            gateway = get()
+        )
+    }
+    single<FileDataSource> {
+        TdFileDataSource(
+            gateway = get()
+        )
+    }
+    
+    factory<AuthRemoteDataSource> {
+        TdAuthRemoteDataSource(
+            gateway = get()
+        )
+    }
+    
+    factory<PlayerDataSourceFactory> {
+        PlayerDataSourceFactoryImpl(
+            gateway = get()
+        )
+    }
+
+    single<AuthRepository> {
+        AuthRepositoryImpl(
+            remote = get(),
+            updates = get(),
+            tdLibClient = get(),
+            scopeProvider = get()
+        )
+    }
+    
+    factory<UserRemoteDataSource> {
+        TdUserRemoteDataSource(
+            gateway = get()
+        )
+    }
+
+    single<UserLocalDataSource> {
+        InMemoryUserLocalDataSource()
+    }
+
+    single<ChatLocalDataSource> {
+        InMemoryChatLocalDataSource()
+    }
+    
+    single<UserRepository> {
+        UserRepositoryImpl(
+            remote = get(),
+            userLocal = get(),
+            chatLocal = get(),
+            updates = get(),
+            scopeProvider = get()
+        )
+    }
+    
+    factory<ChatsRemoteDataSource> {
+        TdChatsRemoteDataSource(
+            gateway = get()
+        )
+    }
+
+    single<ChatsCacheDataSource> {
+        get<ChatCache>()
+    }
+    
+    single<ChatRemoteSource> {
+        TdChatRemoteSource(
+            gateway = get()
+        )
+    }
+    
+    factory<ProxyRemoteDataSource> {
+        TdProxyRemoteDataSource(
+            gateway = get()
+        )
+    }
+
+    single {
+        ChatMapper()
+    }
+
+    single<MessageFileApi> {
+        MessageFileCoordinator(
+            fileDownloadQueue = get()
+        )
+    }
+
+    single<UserCacheDataSource> {
+        get<ChatCache>()
+    }
+
+    single {
+        MessageMapper(
+            connectivityManager = androidContext().getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager,
+            gateway = get(),
+            userRepository = get(),
+            customEmojiPaths = get<FileUpdateHandler>().customEmojiPaths,
+            fileIdToCustomEmojiId = get<FileUpdateHandler>().fileIdToCustomEmojiId,
+            fileApi = get(),
+            settingsRepository = get(),
+            cache = get(),
+            scopeProvider = get()
+        )
+    }
+
+    single<ChatsListRepository> {
+        ChatsListRepositoryImpl(
+            remoteDataSource = get(),
+            cacheDataSource = get(),
+            chatRemoteSource = get(),
+            proxyRemoteSource = get(),
+            updates = get(),
+            appPreferences = get(),
+            cacheProvider = get(),
+            dispatchers = get(),
+            cache = get(),
+            chatMapper = get(),
+            messageMapper = get(),
+            gateway = get(),
+            scopeProvider = get()
+        )
+    }
+    
+    factory<SettingsRemoteDataSource> {
+        TdSettingsRemoteDataSource(
+            gateway = get()
+        )
+    }
+
+    single<SettingsCacheDataSource> {
+        InMemorySettingsCacheDataSource()
+    }
+    
+    single<SettingsRepository> {
+        SettingsRepositoryImpl(
+            remote = get(),
+            cache = get(),
+            chatsRemote = get(),
+            updates = get(),
+            appPreferences = get(),
+            cacheProvider = get(),
+            scopeProvider = get(),
+            dispatchers = get()
+        )
+    }
+    single<PollRepository> {
+        PollRepositoryImpl()
+    }
+
+    single<MessageRemoteDataSource> {
+        TdMessageRemoteDataSource(
+            gateway = get(),
+            messageMapper = get(),
+            userRepository = get(),
+            chatsListRepository = get(),
+            cache = get(),
+            pollRepository = get(),
+            fileDownloadQueue = get(),
+            dispatcherProvider = get(),
+            scopeProvider = get()
+        )
+    }
+
+    single<MessageRepository> {
+        MessageRepositoryImpl(
+            context = androidContext(),
+            gateway = get(),
+            messageMapper = get(),
+            messageRemoteDataSource = get(),
+            cache = get(),
+            dispatcherProvider = get(),
+            scopeProvider = get(),
+            fileQueue = get(),
+        )
+    }
+
+    factory<StickerRemoteSource> {
+        TdStickerRemoteSource(
+            gateway = get()
+        )
+    }
+
+    single {
+        FileMessageRegistry()
+    }
+
+    single {
+        FileDownloadQueue(
+            gateway = get(),
+            registry = get(),
+            cache = get(),
+            scope = get(),
+            dispatcherProvider = get()
+        )
+    }
+
+    single {
+        FileUpdateHandler(
+            registry = get(),
+            queue = get(),
+            updates = get(),
+            scope = get()
+        )
+    }
+
+    single<StickerRepository> {
+        StickerRepositoryImpl(
+            remote = get(),
+            fileQueue = get(),
+            fileUpdateHandler = get(),
+            updates = get(),
+            cacheProvider = get(),
+            dispatchers = get(),
+            context = androidContext(),
+            scopeProvider = get()
+        )
+    }
+    
+    factory<PrivacyRemoteDataSource> {
+        TdPrivacyRemoteDataSource(
+            gateway = get()
+        )
+    }
+    
+    single<PrivacyRepository> {
+        PrivacyRepositoryImpl(
+            remote = get(),
+            updates = get(),
+            scopeProvider = get()
+        )
+    }
+
+    single<LinkHandlerRepository> {
+        LinkHandlerRepositoryImpl(get(), get(), get())
+    }
+
+    single<StreamingRepository> {
+        StreamingRepositoryImpl(
+            gateway = get(),
+            updates = get(),
+            scopeProvider = get()
+        )
+    }
+
+    factory<ExternalProxyDataSource> {
+        HttpExternalProxyDataSource(
+            dispatchers = get()
+        )
+    }
+
+    single<ExternalProxyRepository> {
+        ExternalProxyRepositoryImpl(
+            remote = get(),
+            externalSource = get(),
+            dispatchers = get(),
+            appPreferences = get()
+        )
+    }
+
+    single<LocationRepository> {
+        LocationRepositoryImpl()
+    }
+
+    factory<UpdateRemoteDateSource> {
+        TdUpdateRemoteDataSource(
+            gateway = get()
+        )
+    }
+
+    single<UpdateRepository> {
+        UpdateRepositoryImpl(
+            context = androidContext(),
+            remote = get(),
+            fileQueue = get(),
+            fileUpdateHandler = get(),
+            authRepository = get(),
+            scopeProvider = get(),
+        )
+    }
+}

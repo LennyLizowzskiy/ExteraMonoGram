@@ -1,0 +1,94 @@
+package org.monogram.data.datasource.remote
+
+import org.drinkless.tdlib.TdApi
+import org.monogram.data.gateway.TelegramGateway
+
+class TdSettingsRemoteDataSource(
+    private val gateway: TelegramGateway
+) : SettingsRemoteDataSource {
+
+    override suspend fun getScopeNotificationSettings(
+        scope: TdApi.NotificationSettingsScope
+    ): TdApi.ScopeNotificationSettings? =
+        runCatching { gateway.execute(TdApi.GetScopeNotificationSettings(scope)) }.getOrNull()
+
+    override suspend fun getActiveSessions(): TdApi.Sessions? =
+        runCatching { gateway.execute(TdApi.GetActiveSessions()) }.getOrNull()
+
+    override suspend fun getInstalledBackgrounds(forDarkTheme: Boolean): TdApi.Backgrounds? =
+        runCatching {
+            val result = gateway.execute(TdApi.GetInstalledBackgrounds(forDarkTheme))
+            result.backgrounds.forEach { bg ->
+                bg.document?.thumbnail?.file?.let { file ->
+                    if (file.local.path.isEmpty()) {
+                        runCatching { gateway.execute(TdApi.DownloadFile(file.id, 1, 0, 0, false)) }
+                    }
+                }
+            }
+            result
+        }.getOrNull()
+
+    override suspend fun getStorageStatistics(chatLimit: Int): TdApi.StorageStatistics? =
+        runCatching { gateway.execute(TdApi.GetStorageStatistics(chatLimit)) }.getOrNull()
+
+    override suspend fun getNetworkStatistics(): TdApi.NetworkStatistics? =
+        runCatching { gateway.execute(TdApi.GetNetworkStatistics()) }.getOrNull()
+
+    override suspend fun getOption(name: String): TdApi.OptionValue? =
+        runCatching { gateway.execute(TdApi.GetOption(name)) }.getOrNull()
+
+    override suspend fun getChatNotificationSettingsExceptions(
+        scope: TdApi.NotificationSettingsScope,
+        compareSound: Boolean
+    ): TdApi.Chats? =
+        runCatching {
+            gateway.execute(TdApi.GetChatNotificationSettingsExceptions(scope, compareSound))
+        }.getOrNull()
+
+    override suspend fun setScopeNotificationSettings(
+        scope: TdApi.NotificationSettingsScope,
+        settings: TdApi.ScopeNotificationSettings
+    ) {
+        runCatching { gateway.execute(TdApi.SetScopeNotificationSettings(scope, settings)) }
+    }
+
+    override suspend fun setChatNotificationSettings(
+        chatId: Long,
+        settings: TdApi.ChatNotificationSettings
+    ) {
+        runCatching { gateway.execute(TdApi.SetChatNotificationSettings(chatId, settings)) }
+    }
+
+    override suspend fun setOption(name: String, value: TdApi.OptionValue) {
+        runCatching { gateway.execute(TdApi.SetOption(name, value)) }
+    }
+
+    override suspend fun terminateSession(sessionId: Long): Boolean =
+        runCatching { gateway.execute(TdApi.TerminateSession(sessionId)); true }.getOrDefault(false)
+
+    override suspend fun confirmQrCode(link: String): Boolean =
+        runCatching { gateway.execute(TdApi.ConfirmQrCodeAuthentication(link)); true }.getOrDefault(false)
+
+    override suspend fun optimizeStorage(
+        size: Long,
+        ttl: Int,
+        count: Int,
+        immunityDelay: Int,
+        chatIds: LongArray?,
+        returnDeletedFileStatistics: Boolean,
+        chatLimit: Int
+    ): Boolean =
+        runCatching {
+            gateway.execute(
+                TdApi.OptimizeStorage(size, ttl, count, immunityDelay, null, chatIds, null, returnDeletedFileStatistics, chatLimit)
+            )
+            true
+        }.getOrDefault(false)
+
+    override suspend fun resetNetworkStatistics(): Boolean =
+        runCatching { gateway.execute(TdApi.ResetNetworkStatistics()); true }.getOrDefault(false)
+
+    override suspend fun downloadFile(fileId: Int, priority: Int) {
+        runCatching { gateway.execute(TdApi.DownloadFile(fileId, priority, 0, 0, false)) }
+    }
+}

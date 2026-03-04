@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="confirmation_title">Подтверждение</string>
+    <string name="confirmation_message">Вы действительно хотите авторизовать это устройство?</string>
+    <string name="confirm_auth_action">Да, войти</string>
+    <string name="cancel_action">Отмена</string>
+
+    <string name="scan_qr_title">Сканировать QR</string>
+    <string name="devices_title">Устройства</string>
+    <string name="link_device_action">Связать устройство</string>
+
+    <string name="current_device_section">Это устройство</string>
+    <string name="login_requests_section">Запросы на вход</string>
+    <string name="active_sessions_section">Активные сеансы</string>
+
+    <string name="cd_navigate_back">Назад</string>
+    <string name="cd_close_scanner">Закрыть сканер</string>
+    <string name="cd_qr_icon">Иконка QR сканера</string>
+</resources>
