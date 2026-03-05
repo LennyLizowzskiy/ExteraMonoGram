@@ -80,6 +80,28 @@ class UserRepositoryImpl(
                 }
             }
         }
+        scope.launch {
+            updates.file.collect { update ->
+                val file = update.file
+                if (file.local.isDownloadingCompleted) {
+                    userLocal.getAllUsers().forEach { user ->
+                        val small = user.profilePhoto?.small
+                        val big = user.profilePhoto?.big
+                        if (small?.id == file.id || big?.id == file.id) {
+                            _userUpdateFlow.emit(user.id)
+                            if (user.id == currentUserId) refreshCurrentUser()
+                        }
+                    }
+                    chatLocal.getAllChats().forEach { chat ->
+                        val small = chat.photo?.small
+                        val big = chat.photo?.big
+                        if (small?.id == file.id || big?.id == file.id) {
+                            _userUpdateFlow.emit(chat.id)
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private fun refreshCurrentUser() {

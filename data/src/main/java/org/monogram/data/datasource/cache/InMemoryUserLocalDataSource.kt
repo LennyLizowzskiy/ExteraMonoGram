@@ -19,6 +19,8 @@ class InMemoryUserLocalDataSource : UserLocalDataSource {
         fullInfos[userId] = info
     }
 
+    override fun getAllUsers(): Collection<TdApi.User> = users.values
+
     override fun clearAll() {
         users.clear()
         fullInfos.clear()

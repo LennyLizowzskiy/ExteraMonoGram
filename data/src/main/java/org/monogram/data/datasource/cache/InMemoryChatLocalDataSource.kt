@@ -16,6 +16,8 @@ class InMemoryChatLocalDataSource : ChatLocalDataSource {
         chats[chat.id] = chat
     }
 
+    override fun getAllChats(): Collection<TdApi.Chat> = chats.values
+
     override fun getSupergroup(supergroupId: Long): TdApi.Supergroup? = supergroups[supergroupId]
 
     override fun putSupergroup(supergroup: TdApi.Supergroup) {

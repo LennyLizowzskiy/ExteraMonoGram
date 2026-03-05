@@ -7,5 +7,6 @@ interface UserLocalDataSource {
     fun putUser(user: TdApi.User)
     fun getUserFullInfo(userId: Long): TdApi.UserFullInfo?
     fun putUserFullInfo(userId: Long, info: TdApi.UserFullInfo)
+    fun getAllUsers(): Collection<TdApi.User>
     fun clearAll()
 }
