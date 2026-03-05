@@ -12,6 +12,7 @@ import org.monogram.data.gateway.TelegramGateway
 import org.monogram.domain.models.*
 import org.monogram.domain.repository.SettingsRepository
 import org.monogram.domain.repository.UserRepository
+import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
 class MessageMapper(
@@ -57,15 +58,19 @@ class MessageMapper(
         }
     }
 
+    private fun isValidPath(path: String?): Boolean {
+        return !path.isNullOrEmpty() && File(path).exists()
+    }
+
     private fun findBestAvailablePath(mainFile: TdApi.File?, sizes: Array<TdApi.PhotoSize>? = null): String? {
-        if (mainFile != null && mainFile.local.path.isNotEmpty()) {
+        if (mainFile != null && isValidPath(mainFile.local.path)) {
             return mainFile.local.path
         }
 
         if (sizes != null) {
             return sizes.sortedByDescending { it.width }
                 .map { getUpdatedFile(it.photo) }
-                .firstOrNull { it.local.path.isNotEmpty() }
+                .firstOrNull { isValidPath(it.local.path) }
                 ?.local?.path
         }
         return null
@@ -99,8 +104,8 @@ class MessageMapper(
 
                     if (senderName.isBlank()) senderName = "User"
 
-                    senderAvatar = user.avatarPath
-                    senderPersonalAvatar = user.personalAvatarPath
+                    senderAvatar = user.avatarPath.takeIf { isValidPath(it) }
+                    senderPersonalAvatar = user.personalAvatarPath.takeIf { isValidPath(it) }
                     isSenderVerified = user.isVerified
                 }
 
@@ -139,7 +144,7 @@ class MessageMapper(
                     senderName = chat.title
                     val photo = chat.photo?.small
                     if (photo != null) {
-                        senderAvatar = photo.local.path
+                        senderAvatar = photo.local.path.takeIf { isValidPath(it) }
                         if (senderAvatar.isNullOrEmpty()) {
                             fileApi.enqueueDownload(
                                 photo.id,
@@ -290,7 +295,7 @@ class MessageMapper(
                                                     user?.firstName,
                                                     user?.lastName
                                                 ).joinToString(" "),
-                                                avatar = user?.avatarPath
+                                                avatar = user?.avatarPath.takeIf { isValidPath(it) }
                                             )
                                         }
 
@@ -309,7 +314,7 @@ class MessageMapper(
                                             ReactionSender(
                                                 id = senderId.chatId,
                                                 name = chat?.title ?: "",
-                                                avatar = chat?.photo?.small?.local?.path
+                                                avatar = chat?.photo?.small?.local?.path.takeIf { isValidPath(it) }
                                             )
                                         }
 
@@ -334,7 +339,7 @@ class MessageMapper(
 
                         is TdApi.ReactionTypeCustomEmoji -> {
                             val emojiId = type.customEmojiId
-                            val path = customEmojiPaths[emojiId]
+                            val path = customEmojiPaths[emojiId].takeIf { isValidPath(it) }
                             if (path == null) {
                                 loadCustomEmoji(
                                     emojiId,
@@ -455,7 +460,7 @@ class MessageMapper(
                 is TdApi.TextEntityTypeBankCardNumber -> MessageEntityType.BankCardNumber
                 is TdApi.TextEntityTypeCustomEmoji -> {
                     val emojiId = entityType.customEmojiId
-                    val path = customEmojiPaths[emojiId]
+                    val path = customEmojiPaths[emojiId].takeIf { isValidPath(it) }
                     if (path == null) {
                         scope.launch {
                             loadCustomEmoji(emojiId, chatId, messageId, networkAutoDownload)
@@ -574,7 +579,7 @@ class MessageMapper(
                 else -> networkAutoDownload
             }
 
-            if (updatedFile.local.path.isEmpty() && autoDownload) {
+            if (!isValidPath(updatedFile.local.path) && autoDownload) {
                 fileApi.enqueueDownload(updatedFile.id, 1, downloadType, 0, 0, false)
             }
             return updatedFile
@@ -598,27 +603,27 @@ class MessageMapper(
 
         val video = videoObj?.let { v ->
             val f = processTdFile(v.video, TdMessageRemoteDataSource.DownloadType.VIDEO, v.supportsStreaming)
-            WebPage.Video(f.local.path.ifEmpty { null }, v.width, v.height, v.duration, f.id, v.supportsStreaming)
+            WebPage.Video(f.local.path.takeIf { isValidPath(it) }, v.width, v.height, v.duration, f.id, v.supportsStreaming)
         }
 
         val audio = audioObj?.let { a ->
             val f = processTdFile(a.audio, TdMessageRemoteDataSource.DownloadType.DEFAULT)
-            WebPage.Audio(f.local.path.ifEmpty { null }, a.duration, a.title, a.performer, f.id)
+            WebPage.Audio(a.audio.local.path.takeIf { isValidPath(it) }, a.duration, a.title, a.performer, f.id)
         }
 
         val document = documentObj?.let { d ->
             val f = processTdFile(d.document, TdMessageRemoteDataSource.DownloadType.DEFAULT)
-            WebPage.Document(f.local.path.ifEmpty { null }, d.fileName, d.mimeType, f.size, f.id)
+            WebPage.Document(d.document.local.path.takeIf { isValidPath(it) }, d.fileName, d.mimeType, f.size, f.id)
         }
 
         val sticker = stickerObj?.let { s ->
             val f = processTdFile(s.sticker, TdMessageRemoteDataSource.DownloadType.STICKER)
-            WebPage.Sticker(f.local.path.ifEmpty { null }, s.width, s.height, s.emoji, f.id)
+            WebPage.Sticker(s.sticker.local.path.takeIf { isValidPath(it) }, s.width, s.height, s.emoji, f.id)
         }
 
         val animation = animationObj?.let { anim ->
             val f = processTdFile(anim.animation, TdMessageRemoteDataSource.DownloadType.GIF)
-            WebPage.Animation(f.local.path.ifEmpty { null }, anim.width, anim.height, anim.duration, f.id)
+            WebPage.Animation(anim.animation.local.path.takeIf { isValidPath(it) }, anim.width, anim.height, anim.duration, f.id)
         }
 
         return WebPage(
@@ -814,14 +819,14 @@ class MessageMapper(
             is TdApi.MessageVideo -> {
                 val video = c.video
                 val videoFile = getUpdatedFile(video.video)
-                val path = videoFile.local.path.ifEmpty { null }
+                val path = videoFile.local.path.takeIf { isValidPath(it) }
                 fileApi.registerFileForMessage(videoFile.id, msg.chatId, msg.id)
 
                 val thumbFile = video.thumbnail?.file?.let { getUpdatedFile(it) }
 
                 if (thumbFile != null) {
                     fileApi.registerFileForMessage(thumbFile.id, msg.chatId, msg.id)
-                    if (thumbFile.local.path.isEmpty() && networkAutoDownload) {
+                    if (!isValidPath(thumbFile.local.path) && networkAutoDownload) {
                         fileApi.enqueueDownload(thumbFile.id, 1, TdMessageRemoteDataSource.DownloadType.DEFAULT, 0, 0, false)
                     }
                 }
@@ -856,7 +861,7 @@ class MessageMapper(
             is TdApi.MessageVoiceNote -> {
                 val voice = c.voiceNote
                 val voiceFile = getUpdatedFile(voice.voice)
-                val path = voiceFile.local.path.ifEmpty { null }
+                val path = voiceFile.local.path.takeIf { isValidPath(it) }
                 fileApi.registerFileForMessage(voiceFile.id, msg.chatId, msg.id)
                 if (path == null && networkAutoDownload) {
                     fileApi.enqueueDownload(voiceFile.id, 1, TdMessageRemoteDataSource.DownloadType.DEFAULT, 0, 0, false)
@@ -882,7 +887,7 @@ class MessageMapper(
             is TdApi.MessageVideoNote -> {
                 val note = c.videoNote
                 val videoFile = getUpdatedFile(note.video)
-                val videoPath = videoFile.local.path.ifEmpty { null }
+                val videoPath = videoFile.local.path.takeIf { isValidPath(it) }
                 fileApi.registerFileForMessage(videoFile.id, msg.chatId, msg.id)
 
                 if (videoPath == null && networkAutoDownload && settingsRepository.autoDownloadVideoNotes.value) {
@@ -890,7 +895,7 @@ class MessageMapper(
                 }
 
                 val thumbFile = note.thumbnail?.file?.let { getUpdatedFile(it) }
-                val thumbPath = thumbFile?.local?.path?.ifEmpty { null }
+                val thumbPath = thumbFile?.local?.path?.takeIf { isValidPath(it) }
                 if (thumbFile != null) {
                     fileApi.registerFileForMessage(thumbFile.id, msg.chatId, msg.id)
                     if (thumbPath == null && networkAutoDownload) {
@@ -924,7 +929,7 @@ class MessageMapper(
             is TdApi.MessageSticker -> {
                 val sticker = c.sticker
                 val stickerFile = getUpdatedFile(sticker.sticker)
-                val path = stickerFile.local.path.ifEmpty { null }
+                val path = stickerFile.local.path.takeIf { isValidPath(it) }
 
                 fileApi.registerFileForMessage(stickerFile.id, msg.chatId, msg.id)
                 if (path == null && networkAutoDownload && settingsRepository.autoDownloadStickers.value) {
@@ -961,7 +966,7 @@ class MessageMapper(
             is TdApi.MessageAnimation -> {
                 val animation = c.animation
                 val animationFile = getUpdatedFile(animation.animation)
-                val path = animationFile.local.path.ifEmpty { null }
+                val path = animationFile.local.path.takeIf { isValidPath(it) }
                 fileApi.registerFileForMessage(animationFile.id, msg.chatId, msg.id)
                 if (path == null && networkAutoDownload) {
                     fileApi.enqueueDownload(animationFile.id, 1, TdMessageRemoteDataSource.DownloadType.GIF, 0, 0, false)
@@ -970,7 +975,7 @@ class MessageMapper(
                 val thumbFile = animation.thumbnail?.file?.let { getUpdatedFile(it) }
                 if (thumbFile != null) {
                     fileApi.registerFileForMessage(thumbFile.id, msg.chatId, msg.id)
-                    if (thumbFile.local.path.isEmpty() && networkAutoDownload) {
+                    if (!isValidPath(thumbFile.local.path) && networkAutoDownload) {
                         fileApi.enqueueDownload(thumbFile.id, 1, TdMessageRemoteDataSource.DownloadType.DEFAULT, 0, 0, false)
                     }
                 }
@@ -1005,13 +1010,13 @@ class MessageMapper(
             is TdApi.MessageDocument -> {
                 val doc = c.document
                 val docFile = getUpdatedFile(doc.document)
-                val path = docFile.local.path.ifEmpty { null }
+                val path = docFile.local.path.takeIf { isValidPath(it) }
                 fileApi.registerFileForMessage(docFile.id, msg.chatId, msg.id)
 
                 val thumbFile = doc.thumbnail?.file?.let { getUpdatedFile(it) }
                 if (thumbFile != null) {
                     fileApi.registerFileForMessage(thumbFile.id, msg.chatId, msg.id)
-                    if (thumbFile.local.path.isEmpty() && networkAutoDownload) {
+                    if (!isValidPath(thumbFile.local.path) && networkAutoDownload) {
                         fileApi.enqueueDownload(thumbFile.id, 1, TdMessageRemoteDataSource.DownloadType.DEFAULT, 0, 0, false)
                     }
                 }
@@ -1040,7 +1045,7 @@ class MessageMapper(
             is TdApi.MessageAudio -> {
                 val audio = c.audio
                 val audioFile = getUpdatedFile(audio.audio)
-                val path = audioFile.local.path.ifEmpty { null }
+                val path = audioFile.local.path.takeIf { isValidPath(it) }
                 fileApi.registerFileForMessage(audioFile.id, msg.chatId, msg.id)
 
                 if (path == null && networkAutoDownload) {
@@ -1240,7 +1245,7 @@ class MessageMapper(
             fileIdToCustomEmojiId[fileToUse.id] = emojiId
             fileApi.registerFileForMessage(fileToUse.id, chatId, messageId)
 
-            if (fileToUse.local.path.isEmpty()) {
+            if (!isValidPath(fileToUse.local.path)) {
                 if (autoDownload) {
                     fileApi.enqueueDownload(fileToUse.id, 32, TdMessageRemoteDataSource.DownloadType.DEFAULT, 0, 0, false)
                 }
