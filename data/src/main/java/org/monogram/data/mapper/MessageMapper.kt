@@ -405,6 +405,10 @@ class MessageMapper(
     }
 
     suspend fun getMessageReadDate(chatId: Long, messageId: Long): Int {
+        val chat = cache.getChat(chatId)
+        if (chat?.type !is TdApi.ChatTypePrivate) {
+            return 0
+        }
         return try {
             val result = gateway.execute(TdApi.GetMessageReadDate(chatId, messageId))
             if (result is TdApi.MessageReadDateRead) {
