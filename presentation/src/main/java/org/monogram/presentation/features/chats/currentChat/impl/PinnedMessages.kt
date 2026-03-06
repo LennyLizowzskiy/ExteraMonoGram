@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import org.monogram.domain.models.MessageModel
 import org.monogram.presentation.features.chats.currentChat.DefaultChatComponent
 
 
@@ -42,7 +43,7 @@ internal fun DefaultChatComponent.setupPinnedMessageCollector() {
         .launchIn(scope)
 }
 
-internal fun DefaultChatComponent.handlePinnedMessageClick(message: org.monogram.domain.models.MessageModel?) {
+internal fun DefaultChatComponent.handlePinnedMessageClick(message: MessageModel?) {
     if (message != null) {
         jumpToMessage(message)
         return
@@ -66,11 +67,12 @@ internal fun DefaultChatComponent.handlePinnedMessageClick(message: org.monogram
                     pinnedMessageIndex = nextIndex
                 )
             }
+            jumpToMessage(nextPinned)
         }
     }
 }
 
-private fun DefaultChatComponent.jumpToMessage(message: org.monogram.domain.models.MessageModel) {
+private fun DefaultChatComponent.jumpToMessage(message: MessageModel) {
     if (_state.value.isLoading) return
 
     scope.launch {
@@ -89,6 +91,10 @@ private fun DefaultChatComponent.jumpToMessage(message: org.monogram.domain.mode
                     )
                 }
                 updateMessages(messages, replace = true)
+                lastLoadedOlderId = 0L
+                lastLoadedNewerId = 0L
+                loadMoreMessages()
+                loadNewerMessages()
             }
         } catch (e: Exception) {
             Log.e("DefaultChatComponent", "Error jumping to message", e)

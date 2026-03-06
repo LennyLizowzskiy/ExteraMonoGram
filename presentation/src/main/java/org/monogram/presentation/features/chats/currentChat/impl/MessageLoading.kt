@@ -126,6 +126,8 @@ internal fun DefaultChatComponent.loadMessages(force: Boolean = false) {
 }
 
 private suspend fun DefaultChatComponent.loadComments(threadId: Long) {
+    lastLoadedOlderId = 0L
+    lastLoadedNewerId = 0L
     val messages = repositoryMessage.getMessagesNewer(chatId, threadId, PAGE_SIZE, threadId)
     val reachedEnd = messages.size < PAGE_SIZE
     _state.update {
@@ -144,6 +146,8 @@ private suspend fun DefaultChatComponent.loadComments(threadId: Long) {
 }
 
 private suspend fun DefaultChatComponent.loadBottomMessages(threadId: Long?) {
+    lastLoadedOlderId = 0L
+    lastLoadedNewerId = 0L
     val messages = repositoryMessage.getMessagesOlder(chatId, 0, PAGE_SIZE, threadId)
     val isOldestLoaded = messages.size < PAGE_SIZE
     _state.update {
@@ -162,6 +166,8 @@ private suspend fun DefaultChatComponent.loadBottomMessages(threadId: Long?) {
 }
 
 private suspend fun DefaultChatComponent.loadAroundMessage(messageId: Long, threadId: Long?) {
+    lastLoadedOlderId = 0L
+    lastLoadedNewerId = 0L
     val messages = repositoryMessage.getMessagesAround(chatId, messageId, PAGE_SIZE, threadId)
     if (messages.isNotEmpty()) {
         _state.update {
@@ -185,9 +191,8 @@ private suspend fun DefaultChatComponent.loadAroundMessage(messageId: Long, thre
 internal fun DefaultChatComponent.loadMoreMessages() {
     val state = _state.value
     val forceLoad = state.isOldestLoaded && state.messages.size < 10
-    if (state.isLoadingOlder || (state.isOldestLoaded && !forceLoad)) return
+    if (loadMoreJob?.isActive == true || state.isLoadingOlder || (state.isOldestLoaded && !forceLoad)) return
 
-    loadMoreJob?.cancel()
     loadMoreJob = scope.launch {
         _state.update { it.copy(isLoadingOlder = true) }
         try {
@@ -202,6 +207,11 @@ internal fun DefaultChatComponent.loadMoreMessages() {
                 currentMessages.lastOrNull { it.id > 0 }?.id ?: 0L
             }
 
+            if (anchorId != 0L && anchorId == lastLoadedOlderId) {
+                _state.update { it.copy(isOldestLoaded = true) }
+                return@launch
+            }
+
             val olderMessages = repositoryMessage.getMessagesOlder(chatId, anchorId, PAGE_SIZE, threadId)
 
             val isOldestLoaded =
@@ -209,11 +219,13 @@ internal fun DefaultChatComponent.loadMoreMessages() {
 
             if (olderMessages.isNotEmpty()) {
                 updateMessages(olderMessages)
+                lastLoadedOlderId = anchorId
             }
 
             _state.update { it.copy(isOldestLoaded = isOldestLoaded) }
         } catch (e: Exception) {
             Log.e("DefaultChatComponent", "Failed to load more messages", e)
+            lastLoadedOlderId = 0L
         } finally {
             _state.update { it.copy(isLoadingOlder = false) }
         }
@@ -222,9 +234,8 @@ internal fun DefaultChatComponent.loadMoreMessages() {
 
 internal fun DefaultChatComponent.loadNewerMessages() {
     val state = _state.value
-    if (state.isLoadingNewer || state.isLatestLoaded) return
+    if (loadNewerJob?.isActive == true || state.isLoadingNewer || state.isLatestLoaded) return
 
-    loadNewerJob?.cancel()
     loadNewerJob = scope.launch {
         _state.update { it.copy(isLoadingNewer = true) }
         try {
@@ -239,17 +250,24 @@ internal fun DefaultChatComponent.loadNewerMessages() {
                 currentMessages.firstOrNull { it.id > 0 }?.id ?: return@launch
             }
 
+            if (anchorId != 0L && anchorId == lastLoadedNewerId) {
+                _state.update { it.copy(isLatestLoaded = true) }
+                return@launch
+            }
+
             val newerMessages = repositoryMessage.getMessagesNewer(chatId, anchorId, PAGE_SIZE, threadId)
             val isLatestLoaded =
                 newerMessages.size < PAGE_SIZE || (newerMessages.isNotEmpty() && newerMessages.all { msg -> currentMessages.any { it.id == msg.id } })
 
             if (newerMessages.isNotEmpty()) {
                 updateMessages(newerMessages)
+                lastLoadedNewerId = anchorId
             }
 
             _state.update { it.copy(isLatestLoaded = isLatestLoaded) }
         } catch (e: Exception) {
             Log.e("DefaultChatComponent", "Failed to load newer messages", e)
+            lastLoadedNewerId = 0L
         } finally {
             _state.update { it.copy(isLoadingNewer = false) }
         }

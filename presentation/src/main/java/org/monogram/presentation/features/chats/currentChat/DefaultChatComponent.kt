@@ -60,6 +60,9 @@ class DefaultChatComponent(
     private var autoLoadJob: Job? = null
     private var mentionJob: Job? = null
 
+    internal var lastLoadedOlderId: Long = 0L
+    internal var lastLoadedNewerId: Long = 0L
+
     internal val _state = MutableStateFlow(
         ChatComponent.State(
             chatId = chatId,

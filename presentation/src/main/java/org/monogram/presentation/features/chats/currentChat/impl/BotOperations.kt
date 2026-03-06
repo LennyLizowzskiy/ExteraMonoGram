@@ -47,7 +47,12 @@ internal fun DefaultChatComponent.handleMentionQueryChange(
                         it.username?.lowercase()?.contains(lowerQuery) == true
             }
             if (filtered.isEmpty() && query.length > 2) {
-                userRepository.searchContacts(query)
+                try {
+                    val searchResults = userRepository.searchContacts(query)
+                    searchResults
+                } catch (e: Exception) {
+                    emptyList()
+                }
             } else {
                 filtered
             }
@@ -88,14 +93,16 @@ internal fun DefaultChatComponent.handleLoadMoreInlineResults(offset: String) {
         _state.update { it.copy(isInlineBotLoading = true) }
         try {
             val results = repositoryMessage.getInlineBotResults(botId, chatId, query, offset)
-            _state.update { currentState ->
-                val currentResults = currentState.inlineBotResults
-                if (currentResults != null && results != null) {
-                    currentState.copy(
-                        inlineBotResults = results.copy(results = currentResults.results + results.results)
-                    )
-                } else {
-                    currentState.copy(inlineBotResults = results)
+            if (results != null) {
+                _state.update { currentState ->
+                    val currentResults = currentState.inlineBotResults
+                    if (currentResults != null) {
+                        currentState.copy(
+                            inlineBotResults = results.copy(results = currentResults.results + results.results)
+                        )
+                    } else {
+                        currentState.copy(inlineBotResults = results)
+                    }
                 }
             }
         } catch (e: Exception) {
