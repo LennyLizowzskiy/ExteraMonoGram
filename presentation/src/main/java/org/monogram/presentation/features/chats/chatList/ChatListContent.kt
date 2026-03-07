@@ -73,9 +73,9 @@ fun ChatListContent(component: ChatListComponent) {
     val adaptiveInfo = currentWindowAdaptiveInfo()
     val isTablet = adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED
 
-    BackHandler(
-        enabled = state.isSearchActive || state.selectedChatIds.isNotEmpty() || state.selectedFolderId == -2 || state.isForwarding || state.instantViewUrl != null || state.webAppUrl != null || state.webViewUrl != null
-    ) {
+    val isCustomBackHandlingEnabled = state.isSearchActive || state.selectedChatIds.isNotEmpty() || state.selectedFolderId == -2 || state.isForwarding || state.instantViewUrl != null || state.webAppUrl != null || state.webViewUrl != null
+
+    BackHandler(enabled = isCustomBackHandlingEnabled) {
         component.handleBack()
     }
 

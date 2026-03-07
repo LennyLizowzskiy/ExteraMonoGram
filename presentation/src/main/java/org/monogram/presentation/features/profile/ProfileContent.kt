@@ -1,6 +1,7 @@
 package org.monogram.presentation.features.profile
 
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -75,6 +76,15 @@ fun ProfileContent(component: ProfileComponent) {
         stop = expandedColor,
         fraction = collapsingToolbarState.toolbarState.progress
     )
+
+    val isCustomBackHandlingEnabled = state.fullScreenImages != null || state.fullScreenVideoPath != null || state.miniAppUrl != null || state.isStatisticsVisible || state.isRevenueStatisticsVisible || state.selectedLocation != null
+
+    BackHandler(enabled = isCustomBackHandlingEnabled) {
+        if (state.fullScreenImages != null || state.fullScreenVideoPath != null) component.onDismissViewer()
+        else if (state.miniAppUrl != null) component.onDismissMiniApp()
+        else if (state.isStatisticsVisible || state.isRevenueStatisticsVisible) component.onDismissStatistics()
+        else if (state.selectedLocation != null) component.onDismissLocation()
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(

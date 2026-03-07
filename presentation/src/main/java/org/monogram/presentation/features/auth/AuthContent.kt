@@ -1,6 +1,7 @@
 package org.monogram.presentation.features.auth
 
 import android.content.res.Configuration
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -30,6 +31,12 @@ fun AuthContent(component: AuthComponent) {
     val isTablet = configuration.screenWidthDp >= 600
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val maxContentWidth = if (isTablet && isLandscape) 1000.dp else 600.dp
+
+    val isCustomBackHandlingEnabled = model.authState is AuthComponent.AuthState.InputCode || model.authState is AuthComponent.AuthState.InputPassword
+
+    BackHandler(enabled = isCustomBackHandlingEnabled) {
+        component.onBackToPhone()
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),

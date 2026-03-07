@@ -344,7 +344,7 @@ fun ChatContent(
     var containerSize by remember { mutableStateOf(IntSize.Zero) }
 
     val isCustomBackHandlingEnabled =
-        (editingPhotoPath != null || editingVideoPath != null || selectedMessageId != null || state.selectedMessageIds.isNotEmpty() || state.currentTopicId != null || state.showBotCommands || state.restrictUserId != null || state.fullScreenImages != null || state.fullScreenVideoPath != null || state.fullScreenVideoMessageId != null) && state.miniAppUrl == null && state.webViewUrl == null
+        (editingPhotoPath != null || editingVideoPath != null || selectedMessageId != null || state.selectedMessageIds.isNotEmpty() || state.currentTopicId != null || state.showBotCommands || state.restrictUserId != null || state.fullScreenImages != null || state.fullScreenVideoPath != null || state.fullScreenVideoMessageId != null || state.miniAppUrl != null || state.webViewUrl != null || state.instantViewUrl != null || state.youtubeUrl != null)
 
     CompositionLocalProvider(LocalLinkHandler provides { component.onLinkClick(it) }) {
         Box(
@@ -931,6 +931,10 @@ fun ChatContent(
                 else if (state.restrictUserId != null) component.onDismissRestrictDialog()
                 else if (state.fullScreenImages != null) component.onDismissImages()
                 else if (state.fullScreenVideoPath != null || state.fullScreenVideoMessageId != null) component.onDismissVideo()
+                else if (state.instantViewUrl != null) component.onDismissInstantView()
+                else if (state.youtubeUrl != null) component.onDismissYouTube()
+                else if (state.miniAppUrl != null) component.onDismissMiniApp()
+                else if (state.webViewUrl != null) component.onDismissWebView()
                 else if (state.currentTopicId != null) component.onBackClicked()
             }
         }
