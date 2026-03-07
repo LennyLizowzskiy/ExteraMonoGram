@@ -10,10 +10,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
@@ -29,20 +26,26 @@ import com.arkivanov.decompose.extensions.compose.stack.animation.predictiveback
 import com.arkivanov.decompose.extensions.compose.stack.animation.stackAnimation
 import com.arkivanov.decompose.extensions.compose.subscribeAsState
 import com.arkivanov.decompose.router.stack.ChildStack
+import com.arkivanov.essenty.backhandler.BackCallback
+import com.arkivanov.essenty.backhandler.BackEvent
+import com.arkivanov.essenty.backhandler.BackHandler
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.monogram.domain.models.ProxyTypeModel
 import org.monogram.presentation.features.auth.AuthContent
+import org.monogram.presentation.features.chats.chatList.ChatListContent
 import org.monogram.presentation.features.chats.chatList.NewChatContent
 import org.monogram.presentation.features.chats.chatList.components.AvatarTopAppBar
-import org.monogram.presentation.features.folders.FoldersContent
-import org.monogram.presentation.features.chats.chatList.ChatListContent
 import org.monogram.presentation.features.chats.currentChat.ChatContent
 import org.monogram.presentation.features.chats.currentChat.components.StickerSetSheet
+import org.monogram.presentation.features.folders.FoldersContent
 import org.monogram.presentation.features.profile.ProfileContent
 import org.monogram.presentation.features.profile.admin.AdminManageContent
 import org.monogram.presentation.features.profile.admin.ChatEditContent
 import org.monogram.presentation.features.profile.admin.ChatPermissionsContent
 import org.monogram.presentation.features.profile.admin.MemberListContent
 import org.monogram.presentation.features.profile.logs.ProfileLogsContent
+import org.monogram.presentation.features.stickers.core.toDomain
 import org.monogram.presentation.root.RootComponent
 import org.monogram.presentation.root.StartupContent
 import org.monogram.presentation.settings.about.AboutContent
@@ -62,7 +65,6 @@ import org.monogram.presentation.settings.sessions.SessionsContent
 import org.monogram.presentation.settings.settings.SettingsContent
 import org.monogram.presentation.settings.stickers.StickersContent
 import org.monogram.presentation.settings.storage.StorageUsageContent
-import org.monogram.presentation.features.stickers.core.toDomain
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,21 +77,53 @@ fun MainContent(
     val isExpanded = adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED
 
     val activeChild = childStack.active.instance
-    val isFullScreenOverlay = if (activeChild is RootComponent.Child.ChatDetailChild) {
-        val state by activeChild.component.state.collectAsState()
-        state.fullScreenImages != null ||
-                state.fullScreenVideoPath != null ||
-                state.fullScreenVideoMessageId != null ||
-                state.youtubeUrl != null ||
-                state.instantViewUrl != null ||
-                state.miniAppUrl != null
-    } else false
+    val coroutineScope = rememberCoroutineScope()
 
-    val overlayScale by animateFloatAsState(
-        targetValue = 1f,
-        animationSpec = tween(durationMillis = 300),
-        label = "OverlayScale"
-    )
+    val isPredictiveBackActive = remember { mutableStateOf(false) }
+    val wrappedBackHandler = remember(root.backHandler, coroutineScope) {
+        object : BackHandler {
+            private val callbacks = mutableMapOf<BackCallback, BackCallback>()
+
+            override fun register(callback: BackCallback) {
+                val wrapped = object : BackCallback(callback.isEnabled, callback.priority) {
+                    override fun onBack() {
+                        callback.onBack()
+                        coroutineScope.launch {
+                            delay(400)
+                            isPredictiveBackActive.value = false
+                        }
+                    }
+
+                    override fun onBackStarted(backEvent: BackEvent) {
+                        isPredictiveBackActive.value = true
+                        callback.onBackStarted(backEvent)
+                    }
+
+                    override fun onBackProgressed(backEvent: BackEvent) {
+                        callback.onBackProgressed(backEvent)
+                    }
+
+                    override fun onBackCancelled() {
+                        callback.onBackCancelled()
+                        coroutineScope.launch {
+                            delay(400)
+                            isPredictiveBackActive.value = false
+                        }
+                    }
+                }
+                callbacks[callback] = wrapped
+                root.backHandler.register(wrapped)
+            }
+
+            override fun unregister(callback: BackCallback) {
+                callbacks.remove(callback)?.let { root.backHandler.unregister(it) }
+            }
+
+            override fun isRegistered(callback: BackCallback): Boolean {
+                return callbacks.containsKey(callback)
+            }
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -113,23 +147,11 @@ fun MainContent(
             if (isExpanded && activeChild !is RootComponent.Child.AuthChild && activeChild !is RootComponent.Child.StartupChild) {
                 TabletLayout(root, childStack)
             } else {
-                MobileLayout(root)
+                MobileLayout(root, wrappedBackHandler)
             }
         }
 
-        if (isExpanded) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .zIndex(100f)
-                    .graphicsLayer {
-                        scaleX = overlayScale
-                        scaleY = overlayScale
-                    }
-            ) {
-                RenderChild(root, activeChild, isOverlay = true)
-            }
-        } else {
+        if (!isExpanded && !isPredictiveBackActive.value) {
             RenderChild(root, activeChild, isOverlay = true)
         }
 
@@ -405,16 +427,16 @@ private fun isSettingsSelected(stack: ChildStack<*, RootComponent.Child>): Boole
 
 @OptIn(ExperimentalDecomposeApi::class)
 @Composable
-private fun MobileLayout(root: RootComponent) {
+private fun MobileLayout(root: RootComponent, backHandler: BackHandler = root.backHandler) {
     Children(
         stack = root.childStack,
         animation = predictiveBackAnimation(
-            backHandler = root.backHandler,
+            backHandler = backHandler,
             onBack = root::onBack,
             fallbackAnimation = stackAnimation()
         )
     ) {
-        RenderChild(root, it.instance)
+        RenderChild(root, it.instance, isOverlay = true)
     }
 }
 
