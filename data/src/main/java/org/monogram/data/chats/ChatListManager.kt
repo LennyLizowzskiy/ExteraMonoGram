@@ -12,8 +12,7 @@ class ChatListManager(
     ): List<org.monogram.domain.models.ChatModel> {
         return cache.activeListPositions.entries
             .sortedWith(compareByDescending<MutableMap.MutableEntry<Long, TdApi.ChatPosition>> { it.value.isPinned }
-                .thenByDescending { it.value.order }
-                .thenByDescending { it.key })
+                .thenByDescending { it.value.order })
             .take(limit)
             .mapNotNull { (chatId, position) ->
                 cache.allChats[chatId]?.let { chat ->
