@@ -72,6 +72,9 @@ fun ChatListContent(component: ChatListComponent) {
 
     var showAccountMenu by remember { mutableStateOf(false) }
 
+    val isPermissionRequested by component.appPreferences.isPermissionRequested.collectAsState()
+    var showPermissionRequest by remember { mutableStateOf(!isPermissionRequested) }
+
     val adaptiveInfo = currentWindowAdaptiveInfo()
     val isTablet = adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED
 
@@ -356,6 +359,13 @@ fun ChatListContent(component: ChatListComponent) {
             },
             videoPlayerPool = component.videoPlayerPool
         )
+    }
+
+    if (showPermissionRequest) {
+        PermissionRequestSheet(onDismiss = {
+            showPermissionRequest = false
+            component.appPreferences.setPermissionRequested(true)
+        })
     }
 
     val scrollStates = remember { mutableMapOf<Int, LazyListState>() }

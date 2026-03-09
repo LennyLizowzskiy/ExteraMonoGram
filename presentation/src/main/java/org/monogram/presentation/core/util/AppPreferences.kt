@@ -261,6 +261,9 @@ class AppPreferences(
     private val _passcode = MutableStateFlow(securePrefs.getString(KEY_PASSCODE, null))
     override val passcode: StateFlow<String?> = _passcode
 
+    private val _isPermissionRequested = MutableStateFlow(prefs.getBoolean(KEY_PERMISSION_REQUESTED, false))
+    override val isPermissionRequested: StateFlow<Boolean> = _isPermissionRequested
+
     init {
         if (_adBlockKeywords.value.isEmpty()) {
             externalScope.launch {
@@ -645,6 +648,11 @@ class AppPreferences(
         _passcode.value = passcode
     }
 
+    override fun setPermissionRequested(requested: Boolean) {
+        prefs.edit().putBoolean(KEY_PERMISSION_REQUESTED, requested).apply()
+        _isPermissionRequested.value = requested
+    }
+
     companion object {
         private const val KEY_FONT_SIZE = "font_size"
         private const val KEY_BUBBLE_RADIUS = "bubble_radius"
@@ -724,5 +732,7 @@ class AppPreferences(
 
         private const val KEY_BIOMETRIC_ENABLED = "biometric_enabled"
         private const val KEY_PASSCODE = "passcode"
+
+        private const val KEY_PERMISSION_REQUESTED = "permission_requested"
     }
 }
