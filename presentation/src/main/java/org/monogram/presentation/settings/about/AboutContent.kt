@@ -143,6 +143,94 @@ fun AboutContent(component: AboutComponent) {
             }
 
             item {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Community",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+                SettingsItem(
+                    icon = Icons.Rounded.Forum,
+                    title = "Telegram Chat",
+                    subtitle = "Join our community to discuss features and get help",
+                    iconBackgroundColor = Color(0xFF0088CC),
+                    position = ItemPosition.TOP,
+                    onClick = { uriHandler.openUri("https://t.me/monogram_discuss") }
+                )
+                SettingsItem(
+                    icon = Icons.Rounded.Announcement,
+                    title = "Telegram Channel",
+                    subtitle = "Stay updated with the latest news and announcements",
+                    iconBackgroundColor = Color(0xFF0088CC),
+                    position = ItemPosition.MIDDLE,
+                    onClick = { uriHandler.openUri("https://t.me/monogram_android") }
+                )
+                SettingsItem(
+                    icon = Icons.Rounded.Favorite,
+                    title = "Support MonoGram",
+                    subtitle = "Support the development and help us keep the project alive",
+                    iconBackgroundColor = Color(0xFFFF5F2C),
+                    position = ItemPosition.BOTTOM,
+                    onClick = { uriHandler.openUri("https://boosty.to/monogram") }
+                )
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Maintainers",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+                SettingsItem(
+                    icon = Icons.Rounded.Person,
+                    title = "gdlbo",
+                    subtitle = "Developer",
+                    iconBackgroundColor = Color(0xFF607D8B),
+                    position = ItemPosition.TOP,
+                    onClick = { uriHandler.openUri("https://t.me/gdlbo") }
+                )
+                SettingsItem(
+                    icon = Icons.Rounded.Person,
+                    title = "Rozetka_img",
+                    subtitle = "Developer",
+                    iconBackgroundColor = Color(0xFF607D8B),
+                    position = ItemPosition.MIDDLE,
+                    onClick = { uriHandler.openUri("https://t.me/Rozetka_img") }
+                )
+                SettingsItem(
+                    icon = Icons.Rounded.Person,
+                    title = "aliveoutside",
+                    subtitle = "Developer",
+                    iconBackgroundColor = Color(0xFF607D8B),
+                    position = ItemPosition.MIDDLE,
+                    onClick = { uriHandler.openUri("https://t.me/toxyxd") }
+                )
+                SettingsItem(
+                    icon = Icons.Rounded.Person,
+                    title = "recodius",
+                    subtitle = "Developer",
+                    iconBackgroundColor = Color(0xFF607D8B),
+                    position = ItemPosition.MIDDLE,
+                    onClick = { uriHandler.openUri("https://t.me/recodius") }
+                )
+                SettingsItem(
+                    icon = Icons.Rounded.Brush,
+                    title = "the8055u",
+                    subtitle = "Icon & Logo Designer",
+                    iconBackgroundColor = Color(0xFF607D8B),
+                    position = ItemPosition.BOTTOM,
+                    onClick = { uriHandler.openUri("https://t.me/the8055u") }
+                )
+            }
+
+            item {
                 Spacer(modifier = Modifier.height(32.dp))
                 Text(
                     text = "MonoGram is an unofficial Telegram client built with Material Design 3",
