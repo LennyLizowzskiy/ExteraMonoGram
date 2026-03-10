@@ -11,7 +11,6 @@ import org.koin.dsl.module
 import org.monogram.core.DispatcherProvider
 import org.monogram.core.ScopeProvider
 import org.monogram.data.chats.ChatCache
-import org.monogram.data.chats.ChatMapper
 import org.monogram.data.datasource.FileDataSource
 import org.monogram.data.datasource.PlayerDataSourceFactoryImpl
 import org.monogram.data.datasource.TdFileDataSource
@@ -23,6 +22,7 @@ import org.monogram.data.gateway.TelegramGatewayImpl
 import org.monogram.data.gateway.UpdateDispatcher
 import org.monogram.data.gateway.UpdateDispatcherImpl
 import org.monogram.data.infra.*
+import org.monogram.data.mapper.ChatMapper
 import org.monogram.data.mapper.MessageMapper
 import org.monogram.data.repository.*
 import org.monogram.domain.repository.*
@@ -83,7 +83,7 @@ val dataModule = module {
             androidContext(),
             MonogramDatabase::class.java,
             "monogram_db"
-        ).fallbackToDestructiveMigration(false).build()
+        ).fallbackToDestructiveMigration(true).build()
     }
     single { get<MonogramDatabase>().chatDao() }
     single { get<MonogramDatabase>().messageDao() }
@@ -91,6 +91,15 @@ val dataModule = module {
     single { get<MonogramDatabase>().chatFullInfoDao() }
     single { get<MonogramDatabase>().topicDao() }
     single { get<MonogramDatabase>().userFullInfoDao() }
+    single { get<MonogramDatabase>().stickerSetDao() }
+    single { get<MonogramDatabase>().recentEmojiDao() }
+    single { get<MonogramDatabase>().searchHistoryDao() }
+    single { get<MonogramDatabase>().chatFolderDao() }
+    single { get<MonogramDatabase>().attachBotDao() }
+    single { get<MonogramDatabase>().keyValueDao() }
+    single { get<MonogramDatabase>().notificationSettingDao() }
+    single { get<MonogramDatabase>().wallpaperDao() }
+    single { get<MonogramDatabase>().stickerPathDao() }
 
     single<UserLocalDataSource> {
         RoomUserLocalDataSource(
@@ -197,7 +206,9 @@ val dataModule = module {
             scopeProvider = get(),
             chatLocalDataSource = get(),
             connectionManager = get(),
-            databaseFile = androidContext().getDatabasePath("monogram_db")
+            databaseFile = androidContext().getDatabasePath("monogram_db"),
+            searchHistoryDao = get(),
+            chatFolderDao = get()
         )
     }
 
@@ -220,7 +231,10 @@ val dataModule = module {
             appPreferences = get(),
             cacheProvider = get(),
             scopeProvider = get(),
-            dispatchers = get()
+            dispatchers = get(),
+            attachBotDao = get(),
+            keyValueDao = get(),
+            wallpaperDao = get()
         )
     }
     single<PollRepository> {
@@ -293,7 +307,10 @@ val dataModule = module {
             cacheProvider = get(),
             dispatchers = get(),
             context = androidContext(),
-            scopeProvider = get()
+            scopeProvider = get(),
+            stickerSetDao = get(),
+            recentEmojiDao = get(),
+            stickerPathDao = get()
         )
     }
 
@@ -358,4 +375,6 @@ val dataModule = module {
             scopeProvider = get(),
         )
     }
+
+    single { TdNotificationManager(androidContext(), get(), get(), get()) }
 }

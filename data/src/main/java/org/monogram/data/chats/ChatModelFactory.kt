@@ -5,6 +5,7 @@ import org.drinkless.tdlib.TdApi
 import org.monogram.core.DispatcherProvider
 import org.monogram.core.ScopeProvider
 import org.monogram.data.gateway.TelegramGateway
+import org.monogram.data.mapper.ChatMapper
 import org.monogram.domain.models.ChatModel
 import org.monogram.domain.models.UsernamesModel
 import org.monogram.domain.repository.AppPreferencesProvider
@@ -43,6 +44,8 @@ class ChatModelFactory(
         var inviteLink: String? = null
         var hasAutomaticTranslation = false
         var personalAvatarPath: String? = null
+
+        val isArchived = chat.positions.any { it.list is TdApi.ChatListArchive }
 
         when (val type = chat.type) {
             is TdApi.ChatTypeBasicGroup -> {
@@ -117,6 +120,7 @@ class ChatModelFactory(
                     description = fullInfo.bio?.text
                     personalAvatarPath = resolvePhotoPath(fullInfo.photo?.sizes?.lastOrNull()?.photo, chat.id)
                 } ?: lazyLoad(cache.pendingUserFullInfo, type.userId) {
+                    if (type.userId == 0L) return@lazyLoad
                     val result = gateway.execute(TdApi.GetUserFullInfo(type.userId))
                     cache.userFullInfoCache[type.userId] = result
                     triggerUpdate(chat.id)
@@ -179,12 +183,32 @@ class ChatModelFactory(
         }
 
         return chatMapper.mapChatToModel(
-            chat, order, isPinned, finalPath, photoId, isOnline, userStatus,
-            isVerified, isForum, isBot, memberCount, onlineCount, emojiPath,
-            typingManager.formatTypingAction(chat.id), txt, entities, time,
-            isMuted = isMuted, isAdmin = isAdmin, isMember = isMember,
-            username = username, usernames = usernames, description = description,
-            inviteLink = inviteLink, hasAutomaticTranslation = hasAutomaticTranslation,
+            chat = chat,
+            order = order,
+            isPinned = isPinned,
+            isArchived = isArchived,
+            smallPhotoPath = finalPath,
+            photoId = photoId,
+            isOnline = isOnline,
+            userStatus = userStatus,
+            isVerified = isVerified,
+            isForum = isForum,
+            isBot = isBot,
+            memberCount = memberCount,
+            onlineCount = onlineCount,
+            emojiPath = emojiPath,
+            typingAction = typingManager.formatTypingAction(chat.id),
+            lastMessageText = txt,
+            lastMessageEntities = entities,
+            lastMessageTime = time,
+            isMuted = isMuted,
+            isAdmin = isAdmin,
+            isMember = isMember,
+            username = username,
+            usernames = usernames,
+            description = description,
+            inviteLink = inviteLink,
+            hasAutomaticTranslation = hasAutomaticTranslation,
             personalAvatarPath = personalAvatarPath
         )
     }
