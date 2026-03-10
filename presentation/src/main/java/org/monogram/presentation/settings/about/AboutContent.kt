@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -33,6 +34,7 @@ import org.monogram.presentation.R
 import org.monogram.presentation.core.util.buildRichText
 import org.monogram.presentation.core.ui.ItemPosition
 import org.monogram.presentation.core.ui.SettingsItem
+import org.monogram.presentation.core.util.AppUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,6 +43,8 @@ fun AboutContent(component: AboutComponent) {
     val tdLibVersion by component.tdLibVersion.collectAsState()
     val tdLibCommitHash by component.tdLibCommitHash.collectAsState()
     val uriHandler = LocalUriHandler.current
+    val context = LocalContext.current
+    val version = remember { AppUtils.getFullVersionString(context) }
 
     val displayTdLibVersion = remember(tdLibVersion, tdLibCommitHash) {
         if (tdLibVersion == "Loading...") {
@@ -92,7 +96,7 @@ fun AboutContent(component: AboutComponent) {
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Version 1.0.0 (Dev)",
+                    text = "Version $version",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

@@ -1,5 +1,6 @@
 package org.monogram.presentation.features.chats.chatList.components
 
+import android.R.attr.version
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
@@ -46,6 +47,7 @@ import org.monogram.presentation.core.util.formatMaskedGlobal
 import org.monogram.presentation.features.chats.currentChat.components.VideoPlayerPool
 import org.monogram.presentation.core.ui.ItemPosition
 import org.monogram.presentation.core.ui.SettingsItem
+import org.monogram.presentation.core.util.AppUtils
 import kotlin.math.roundToInt
 
 @Composable
@@ -560,6 +562,8 @@ private fun MenuFooter(
     onPrivacyClick: () -> Unit,
     onTermsClick: () -> Unit
 ) {
+    val context = LocalContext.current
+    val version = remember { AppUtils.getFullVersionString(context) }
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -589,7 +593,7 @@ private fun MenuFooter(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "MonoGram Dev for Android v1.0.0",
+            text = "MonoGram Dev for Android v${version}",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
         )
