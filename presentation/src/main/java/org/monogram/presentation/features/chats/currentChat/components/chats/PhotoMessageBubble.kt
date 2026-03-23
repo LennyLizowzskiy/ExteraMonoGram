@@ -20,6 +20,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
@@ -29,6 +30,7 @@ import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import coil3.compose.rememberAsyncImagePainter
 import org.monogram.domain.models.MessageContent
 import org.monogram.domain.models.MessageModel
@@ -110,18 +112,36 @@ fun PhotoMessageBubble(
                 .widthIn(max = 280.dp)
                 .animateContentSize()) {
                 if (isGroup && !isOutgoing && !isSameSenderAbove) {
-                    Box(modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 8.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(if (isOutgoing) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh)
+                            .padding(start = 12.dp, end = 12.dp, top = 8.dp)
+                            .zIndex(1f)
+                    ) {
                         MessageSenderName(msg)
                     }
                 }
 
                 msg.forwardInfo?.let { forward ->
-                    Box(modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(if (isOutgoing) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh)
+                            .padding(horizontal = 12.dp, vertical = 4.dp)
+                            .zIndex(1f)
+                    ) {
                         ForwardContent(forward, isOutgoing, onForwardClick = toProfile)
                     }
                 }
                 msg.replyToMsg?.let { reply ->
-                    Box(modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(if (isOutgoing) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh)
+                            .padding(horizontal = 4.dp, vertical = 4.dp)
+                            .zIndex(1f)
+                    ) {
                         ReplyContent(
                             replyToMsg = reply,
                             isOutgoing = isOutgoing,
@@ -139,6 +159,7 @@ fun PhotoMessageBubble(
                                 (content.width.toFloat() / content.height.toFloat()).coerceIn(0.5f, 2f)
                             else 1f
                         )
+                        .clipToBounds()
                         .onGloballyPositioned { imagePosition = it.positionInWindow() }
                         .pointerInput(Unit) {
                             detectTapGestures(
@@ -273,7 +294,9 @@ fun PhotoMessageBubble(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .background(if (isOutgoing) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh)
                             .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 12.dp)
+                            .zIndex(1f)
                     ) {
                         val inlineContent = rememberMessageInlineContent(content.entities, fontSize)
                         val finalAnnotatedString = buildAnnotatedMessageTextWithEmoji(

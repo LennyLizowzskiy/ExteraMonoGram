@@ -23,6 +23,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
@@ -120,14 +122,20 @@ fun ChannelVideoMessageBubble(
             shape = bubbleShape,
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
             tonalElevation = 1.dp,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.widthIn(max = 360.dp)
         ) {
             Column(modifier = Modifier
                 .fillMaxWidth()
                 .animateContentSize()) {
                 // Headers
                 if (msg.forwardInfo != null || msg.replyToMsg != null) {
-                    Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                            .zIndex(1f)
+                    ) {
                         msg.forwardInfo?.let { ForwardContent(it, false, onForwardClick = toProfile) }
                         msg.replyToMsg?.let { ReplyContent(it, false, onClick = { onReplyClick(it) }) }
                     }
@@ -140,9 +148,10 @@ fun ChannelVideoMessageBubble(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(min = 130.dp, max = 420.dp)
+                        .heightIn(min = 130.dp, max = 360.dp)
                         .aspectRatio(ratio)
                         .clip(if (hasCaption) RoundedCornerShape(topStart = topStart, topEnd = topEnd) else bubbleShape)
+                        .clipToBounds()
                         .onGloballyPositioned { videoPosition = it.positionInWindow() }
                         .pointerInput(Unit) {
                             detectTapGestures(
@@ -315,7 +324,9 @@ fun ChannelVideoMessageBubble(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                             .padding(start = 10.dp, end = 10.dp, top = 6.dp, bottom = 4.dp)
+                            .zIndex(1f)
                     ) {
                         val inlineContent = rememberMessageInlineContent(content.entities, fontSize)
                         val finalAnnotatedString = buildAnnotatedMessageTextWithEmoji(

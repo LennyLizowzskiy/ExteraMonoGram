@@ -16,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
@@ -25,6 +26,7 @@ import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import coil3.compose.rememberAsyncImagePainter
 import org.monogram.domain.models.MessageContent
 import org.monogram.domain.models.MessageModel
@@ -34,8 +36,11 @@ import org.monogram.presentation.features.chats.currentChat.components.VideoPlay
 import org.monogram.presentation.features.chats.currentChat.components.VideoStickerPlayer
 import org.monogram.presentation.features.chats.currentChat.components.VideoType
 import org.monogram.presentation.features.chats.currentChat.components.chats.ForwardContent
+import org.monogram.presentation.features.chats.currentChat.components.chats.MessageText
 import org.monogram.presentation.features.chats.currentChat.components.chats.MessageReactionsView
 import org.monogram.presentation.features.chats.currentChat.components.chats.ReplyContent
+import org.monogram.presentation.features.chats.currentChat.components.chats.buildAnnotatedMessageTextWithEmoji
+import org.monogram.presentation.features.chats.currentChat.components.chats.rememberMessageInlineContent
 
 @Composable
 fun ChannelGifMessageBubble(
@@ -77,6 +82,7 @@ fun ChannelGifMessageBubble(
     )
 
     var gifPosition by remember { mutableStateOf(Offset.Zero) }
+    val revealedSpoilers = remember { mutableStateListOf<Int>() }
 
     val hasPath = !content.path.isNullOrBlank()
 
@@ -101,16 +107,28 @@ fun ChannelGifMessageBubble(
             shape = bubbleShape,
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
             tonalElevation = 1.dp,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.widthIn(max = 360.dp)
         ) {
-            Column {
+            Column(modifier = Modifier.animateContentSize()) {
                 msg.forwardInfo?.let { forward ->
-                    Box(modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 8.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                            .padding(start = 12.dp, end = 12.dp, top = 8.dp)
+                            .zIndex(1f)
+                    ) {
                         ForwardContent(forward, false, onForwardClick = toProfile)
                     }
                 }
                 msg.replyToMsg?.let { reply ->
-                    Box(modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 8.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                            .padding(start = 12.dp, end = 12.dp, top = 8.dp)
+                            .zIndex(1f)
+                    ) {
                         ReplyContent(
                             replyToMsg = reply,
                             isOutgoing = false,
@@ -122,12 +140,13 @@ fun ChannelGifMessageBubble(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 600.dp)
+                        .heightIn(min = 130.dp, max = 360.dp)
                         .aspectRatio(
                             if (content.width > 0 && content.height > 0)
-                                content.width.toFloat() / content.height.toFloat()
+                                (content.width.toFloat() / content.height.toFloat()).coerceIn(0.6f, 1.8f)
                             else 1f
                         )
+                        .clipToBounds()
                         .onGloballyPositioned { gifPosition = it.positionInWindow() }
                         .pointerInput(Unit) {
                             detectTapGestures(
@@ -312,15 +331,33 @@ fun ChannelGifMessageBubble(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                             .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 6.dp)
+                            .zIndex(1f)
                     ) {
-                        Text(
+                        val inlineContent = rememberMessageInlineContent(content.entities, fontSize)
+                        val finalAnnotatedString = buildAnnotatedMessageTextWithEmoji(
                             text = content.caption,
+                            entities = content.entities,
+                            isOutgoing = false,
+                            revealedSpoilers = revealedSpoilers
+                        )
+
+                        MessageText(
+                            text = finalAnnotatedString,
+                            inlineContent = inlineContent,
                             style = MaterialTheme.typography.bodyLarge.copy(
                                 fontSize = fontSize.sp,
                                 lineHeight = (fontSize * 1.375f).sp
                             ),
-                            modifier = Modifier.padding(bottom = 2.dp)
+                            modifier = Modifier.padding(bottom = 2.dp),
+                            onSpoilerClick = { index ->
+                                if (!revealedSpoilers.contains(index)) {
+                                    revealedSpoilers.add(index)
+                                }
+                            },
+                            onClick = { offset -> onLongClick(gifPosition + offset) },
+                            onLongClick = { offset -> onLongClick(gifPosition + offset) }
                         )
                         if (showMetadata) {
                             Row(

@@ -21,31 +21,33 @@ fun groupMessagesByAlbum(messages: List<MessageModel>): List<GroupedMessageItem>
     val result = mutableListOf<GroupedMessageItem>()
     var currentAlbumId: Long = 0L
     val currentAlbumMessages = mutableListOf<MessageModel>()
+    fun flushCurrentAlbum() {
+        if (currentAlbumMessages.isEmpty()) return
+
+        if (currentAlbumMessages.size == 1) {
+            result.add(GroupedMessageItem.Single(currentAlbumMessages.first()))
+        } else {
+            result.add(GroupedMessageItem.Album(currentAlbumId, currentAlbumMessages.toList()))
+        }
+        currentAlbumMessages.clear()
+        currentAlbumId = 0L
+    }
 
     for (msg in messages) {
         if (msg.mediaAlbumId != 0L) {
             if (currentAlbumId == msg.mediaAlbumId) {
                 currentAlbumMessages.add(msg)
             } else {
-                if (currentAlbumMessages.isNotEmpty()) {
-                    result.add(GroupedMessageItem.Album(currentAlbumId, currentAlbumMessages.toList()))
-                    currentAlbumMessages.clear()
-                }
+                flushCurrentAlbum()
                 currentAlbumId = msg.mediaAlbumId
                 currentAlbumMessages.add(msg)
             }
         } else {
-            if (currentAlbumMessages.isNotEmpty()) {
-                result.add(GroupedMessageItem.Album(currentAlbumId, currentAlbumMessages.toList()))
-                currentAlbumMessages.clear()
-                currentAlbumId = 0L
-            }
+            flushCurrentAlbum()
             result.add(GroupedMessageItem.Single(msg))
         }
     }
-    if (currentAlbumMessages.isNotEmpty()) {
-        result.add(GroupedMessageItem.Album(currentAlbumId, currentAlbumMessages.toList()))
-    }
+    flushCurrentAlbum()
     return result
 }
 

@@ -146,29 +146,6 @@ fun ChannelMessageBubbleContainer(
                         }
                     }
             ) {
-                val nextMsgText = (newerMsg?.content as? MessageContent.Text)?.text
-                val currentCaption = when (val c = msg.content) {
-                    is MessageContent.Photo -> c.caption
-                    is MessageContent.Video -> c.caption
-                    is MessageContent.Gif -> c.caption
-                    is MessageContent.Document -> c.caption
-                    is MessageContent.Audio -> c.caption
-                    else -> null
-                }
-                val currentEntities = when (val c = msg.content) {
-                    is MessageContent.Photo -> c.entities
-                    is MessageContent.Video -> c.entities
-                    is MessageContent.Gif -> c.entities
-                    is MessageContent.Document -> c.entities
-                    is MessageContent.Audio -> c.entities
-                    else -> emptyList()
-                }
-
-                val isCaptionSameAsNext =
-                    currentCaption != null && currentCaption.isNotEmpty() && currentCaption == nextMsgText
-                val shouldShowSeparatePost =
-                    currentCaption != null && currentCaption.isNotEmpty() && !isCaptionSameAsNext
-
                 when (val content = msg.content) {
                     is MessageContent.Text -> {
                         ChannelTextMessageBubble(
@@ -198,10 +175,10 @@ fun ChannelMessageBubbleContainer(
 
                     is MessageContent.Photo -> {
                         ChannelPhotoMessageBubble(
-                            content = if (isCaptionSameAsNext || shouldShowSeparatePost) content.copy(caption = "") else content,
+                            content = content,
                             msg = msg,
                             isSameSenderAbove = isSameSenderAbove,
-                            isSameSenderBelow = isSameSenderBelow || shouldShowSeparatePost,
+                            isSameSenderBelow = isSameSenderBelow,
                             fontSize = fontSize,
                             bubbleRadius = bubbleRadius,
                             autoDownloadMobile = autoDownloadMobile,
@@ -219,9 +196,7 @@ fun ChannelMessageBubbleContainer(
                             onReplyClick = onGoToReply,
                             onReactionClick = { onReactionClick(msg.id, it) },
                             onCommentsClick = onCommentsClick,
-                            showComments = showComments && !shouldShowSeparatePost,
-                            showMetadata = !shouldShowSeparatePost,
-                            showReactions = !shouldShowSeparatePost,
+                            showComments = showComments,
                             toProfile = toProfile,
                             modifier = Modifier.fillMaxWidth(),
                             downloadUtils = downloadUtils
@@ -230,10 +205,10 @@ fun ChannelMessageBubbleContainer(
 
                     is MessageContent.Video -> {
                         ChannelVideoMessageBubble(
-                            content = if (isCaptionSameAsNext || shouldShowSeparatePost) content.copy(caption = "") else content,
+                            content = content,
                             msg = msg,
                             isSameSenderAbove = isSameSenderAbove,
-                            isSameSenderBelow = isSameSenderBelow || shouldShowSeparatePost,
+                            isSameSenderBelow = isSameSenderBelow,
                             fontSize = fontSize,
                             bubbleRadius = bubbleRadius,
                             autoDownloadMobile = autoDownloadMobile,
@@ -252,9 +227,7 @@ fun ChannelMessageBubbleContainer(
                             onReplyClick = onGoToReply,
                             onReactionClick = { onReactionClick(msg.id, it) },
                             onCommentsClick = onCommentsClick,
-                            showComments = showComments && !shouldShowSeparatePost,
-                            showMetadata = !shouldShowSeparatePost,
-                            showReactions = !shouldShowSeparatePost,
+                            showComments = showComments,
                             toProfile = toProfile,
                             modifier = Modifier.fillMaxWidth(),
                             downloadUtils = downloadUtils,
@@ -265,11 +238,11 @@ fun ChannelMessageBubbleContainer(
 
                     is MessageContent.Document -> {
                         DocumentMessageBubble(
-                            content = if (isCaptionSameAsNext || shouldShowSeparatePost) content.copy(caption = "") else content,
+                            content = content,
                             msg = msg,
                             isOutgoing = false,
                             isSameSenderAbove = isSameSenderAbove,
-                            isSameSenderBelow = isSameSenderBelow || shouldShowSeparatePost,
+                            isSameSenderBelow = isSameSenderBelow,
                             fontSize = fontSize,
                             autoDownloadFiles = autoDownloadFiles,
                             autoDownloadMobile = autoDownloadMobile,
@@ -294,11 +267,11 @@ fun ChannelMessageBubbleContainer(
 
                     is MessageContent.Audio -> {
                         AudioMessageBubble(
-                            content = if (isCaptionSameAsNext || shouldShowSeparatePost) content.copy(caption = "") else content,
+                            content = content,
                             msg = msg,
                             isOutgoing = false,
                             isSameSenderAbove = isSameSenderAbove,
-                            isSameSenderBelow = isSameSenderBelow || shouldShowSeparatePost,
+                            isSameSenderBelow = isSameSenderBelow,
                             fontSize = fontSize,
                             autoDownloadFiles = autoDownloadFiles,
                             autoDownloadMobile = autoDownloadMobile,
@@ -323,10 +296,10 @@ fun ChannelMessageBubbleContainer(
 
                     is MessageContent.Gif -> {
                         ChannelGifMessageBubble(
-                            content = if (isCaptionSameAsNext || shouldShowSeparatePost) content.copy(caption = "") else content,
+                            content = content,
                             msg = msg,
                             isSameSenderAbove = isSameSenderAbove,
-                            isSameSenderBelow = isSameSenderBelow || shouldShowSeparatePost,
+                            isSameSenderBelow = isSameSenderBelow,
                             fontSize = fontSize,
                             bubbleRadius = bubbleRadius,
                             autoDownloadMobile = autoDownloadMobile,
@@ -345,9 +318,7 @@ fun ChannelMessageBubbleContainer(
                             onReplyClick = onGoToReply,
                             onReactionClick = { onReactionClick(msg.id, it) },
                             onCommentsClick = onCommentsClick,
-                            showComments = showComments && !shouldShowSeparatePost,
-                            showMetadata = !shouldShowSeparatePost,
-                            showReactions = !shouldShowSeparatePost,
+                            showComments = showComments,
                             toProfile = toProfile,
                             modifier = Modifier.fillMaxWidth(),
                             downloadUtils = downloadUtils,
@@ -403,34 +374,6 @@ fun ChannelMessageBubbleContainer(
                     }
 
                     else -> {}
-                }
-
-                if (shouldShowSeparatePost && currentCaption != null) {
-                    Spacer(modifier = Modifier.height(2.dp))
-                    ChannelTextMessageBubble(
-                        content = MessageContent.Text(text = currentCaption, entities = currentEntities),
-                        msg = msg,
-                        isSameSenderAbove = true,
-                        isSameSenderBelow = isSameSenderBelow,
-                        fontSize = fontSize,
-                        bubbleRadius = bubbleRadius,
-                        showLinkPreviews = showLinkPreviews,
-                        onReplyClick = onGoToReply,
-                        onReactionClick = { onReactionClick(msg.id, it) },
-                        onInstantViewClick = onInstantViewClick,
-                        onYouTubeClick = onYouTubeClick,
-                        onClick = { offset ->
-                            onReplyClick(bubblePosition, bubbleSize, bubblePosition + offset)
-                        },
-                        onLongClick = { offset ->
-                            onReplyClick(bubblePosition, bubbleSize, bubblePosition + offset)
-                        },
-                        onCommentsClick = onCommentsClick,
-                        showComments = showComments,
-                        showReactions = true,
-                        toProfile = toProfile,
-                        modifier = Modifier.fillMaxWidth()
-                    )
                 }
 
                 msg.replyMarkup?.let { markup ->

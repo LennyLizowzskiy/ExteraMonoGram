@@ -21,6 +21,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
@@ -77,7 +78,7 @@ fun CompactMediaMosaic(
         val msg = messages[index]
         val isLastItem = index == messages.lastIndex
 
-        Box(modifier = modifier) {
+        Box(modifier = modifier.clipToBounds()) {
             when (val content = msg.content) {
                 is MessageContent.Photo -> {
                     PhotoItem(
@@ -306,7 +307,7 @@ fun PhotoItem(
     var itemPosition by remember { mutableStateOf(Offset.Zero) }
     var isRevealed by remember { mutableStateOf(!photo.hasSpoiler) }
 
-    Box(modifier = modifier) {
+    Box(modifier = modifier.clipToBounds()) {
         Crossfade(
             targetState = photo.path,
             animationSpec = tween(300),
@@ -426,7 +427,7 @@ fun VideoItem(
     var itemPosition by remember { mutableStateOf(Offset.Zero) }
     var isRevealed by remember { mutableStateOf(!video.hasSpoiler) }
 
-    Box(modifier = modifier) {
+    Box(modifier = modifier.clipToBounds()) {
         Crossfade(
             targetState = hasPath || video.supportsStreaming,
             animationSpec = tween(300),
@@ -611,7 +612,7 @@ fun VideoNoteItem(
     }
 
     var itemPosition by remember { mutableStateOf(Offset.Zero) }
-    Box(modifier = modifier) {
+    Box(modifier = modifier.clipToBounds()) {
         Crossfade(
             targetState = videoNote.path,
             animationSpec = tween(300),
@@ -772,7 +773,7 @@ fun GifItem(
     var itemPosition by remember { mutableStateOf(Offset.Zero) }
     var isRevealed by remember { mutableStateOf(!gif.hasSpoiler) }
 
-    Box(modifier = modifier) {
+    Box(modifier = modifier.clipToBounds()) {
         Crossfade(
             targetState = gif.path,
             animationSpec = tween(300),

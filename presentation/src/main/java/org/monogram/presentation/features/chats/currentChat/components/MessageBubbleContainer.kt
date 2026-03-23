@@ -273,31 +273,6 @@ private fun MessageContentSelector(
     videoPlayerPool: VideoPlayerPool,
     isAnyViewerOpen: Boolean = false
 ) {
-    val nextMsgText = (newerMsg?.content as? MessageContent.Text)?.text
-    val currentCaption = remember(msg.content) {
-        when (val c = msg.content) {
-            is MessageContent.Photo -> c.caption
-            is MessageContent.Video -> c.caption
-            is MessageContent.Gif -> c.caption
-            is MessageContent.Document -> c.caption
-            is MessageContent.Audio -> c.caption
-            else -> null
-        }
-    }
-    val currentEntities = remember(msg.content) {
-        when (val c = msg.content) {
-            is MessageContent.Photo -> c.entities
-            is MessageContent.Video -> c.entities
-            is MessageContent.Gif -> c.entities
-            is MessageContent.Document -> c.entities
-            is MessageContent.Audio -> c.entities
-            else -> emptyList()
-        }
-    }
-
-    val isCaptionSameAsNext = currentCaption != null && currentCaption.isNotEmpty() && currentCaption == nextMsgText
-    val shouldShowSeparatePost = currentCaption != null && currentCaption.isNotEmpty() && !isCaptionSameAsNext
-
     Column(
         modifier = Modifier.width(IntrinsicSize.Max),
         horizontalAlignment = if (isOutgoing) Alignment.End else Alignment.Start
@@ -348,11 +323,11 @@ private fun MessageContentSelector(
 
             is MessageContent.Photo -> {
                 PhotoMessageBubble(
-                    content = if (isCaptionSameAsNext || shouldShowSeparatePost) content.copy(caption = "") else content,
+                    content = content,
                     msg = msg,
                     isOutgoing = isOutgoing,
                     isSameSenderAbove = isSameSenderAbove,
-                    isSameSenderBelow = isSameSenderBelow || shouldShowSeparatePost,
+                    isSameSenderBelow = isSameSenderBelow,
                     fontSize = fontSize,
                     isGroup = isGroup,
                     autoDownloadMobile = autoDownloadMobile,
@@ -369,8 +344,6 @@ private fun MessageContentSelector(
                     },
                     onReplyClick = onGoToReply,
                     onReactionClick = { onReactionClick(msg.id, it) },
-                    showMetadata = !shouldShowSeparatePost,
-                    showReactions = !shouldShowSeparatePost,
                     toProfile = toProfile,
                     modifier = Modifier.fillMaxWidth(),
                     downloadUtils = downloadUtils
@@ -379,11 +352,11 @@ private fun MessageContentSelector(
 
             is MessageContent.Video -> {
                 VideoMessageBubble(
-                    content = if (isCaptionSameAsNext || shouldShowSeparatePost) content.copy(caption = "") else content,
+                    content = content,
                     msg = msg,
                     isOutgoing = isOutgoing,
                     isSameSenderAbove = isSameSenderAbove,
-                    isSameSenderBelow = isSameSenderBelow || shouldShowSeparatePost,
+                    isSameSenderBelow = isSameSenderBelow,
                     fontSize = fontSize,
                     autoDownloadMobile = autoDownloadMobile,
                     autoDownloadWifi = autoDownloadWifi,
@@ -400,8 +373,6 @@ private fun MessageContentSelector(
                     },
                     onReplyClick = onGoToReply,
                     onReactionClick = { onReactionClick(msg.id, it) },
-                    showMetadata = !shouldShowSeparatePost,
-                    showReactions = !shouldShowSeparatePost,
                     toProfile = toProfile,
                     modifier = Modifier.fillMaxWidth(),
                     downloadUtils = downloadUtils,
@@ -457,11 +428,11 @@ private fun MessageContentSelector(
 
             is MessageContent.Gif -> {
                 GifMessageBubble(
-                    content = if (isCaptionSameAsNext || shouldShowSeparatePost) content.copy(caption = "") else content,
+                    content = content,
                     msg = msg,
                     isOutgoing = isOutgoing,
                     isSameSenderAbove = isSameSenderAbove,
-                    isSameSenderBelow = isSameSenderBelow || shouldShowSeparatePost,
+                    isSameSenderBelow = isSameSenderBelow,
                     fontSize = fontSize,
                     autoDownloadMobile = autoDownloadMobile,
                     autoDownloadWifi = autoDownloadWifi,
@@ -478,8 +449,6 @@ private fun MessageContentSelector(
                     },
                     onReplyClick = onGoToReply,
                     onReactionClick = { onReactionClick(msg.id, it) },
-                    showMetadata = !shouldShowSeparatePost,
-                    showReactions = !shouldShowSeparatePost,
                     toProfile = toProfile,
                     downloadUtils = downloadUtils,
                     videoPlayerPool = videoPlayerPool,
@@ -489,11 +458,11 @@ private fun MessageContentSelector(
 
             is MessageContent.Document -> {
                 DocumentMessageBubble(
-                    content = if (isCaptionSameAsNext || shouldShowSeparatePost) content.copy(caption = "") else content,
+                    content = content,
                     msg = msg,
                     isOutgoing = isOutgoing,
                     isSameSenderAbove = isSameSenderAbove,
-                    isSameSenderBelow = isSameSenderBelow || shouldShowSeparatePost,
+                    isSameSenderBelow = isSameSenderBelow,
                     fontSize = fontSize,
                     autoDownloadFiles = autoDownloadFiles,
                     autoDownloadMobile = autoDownloadMobile,
@@ -516,11 +485,11 @@ private fun MessageContentSelector(
 
             is MessageContent.Audio -> {
                 AudioMessageBubble(
-                    content = if (isCaptionSameAsNext || shouldShowSeparatePost) content.copy(caption = "") else content,
+                    content = content,
                     msg = msg,
                     isOutgoing = isOutgoing,
                     isSameSenderAbove = isSameSenderAbove,
-                    isSameSenderBelow = isSameSenderBelow || shouldShowSeparatePost,
+                    isSameSenderBelow = isSameSenderBelow,
                     fontSize = fontSize,
                     autoDownloadFiles = autoDownloadFiles,
                     autoDownloadMobile = autoDownloadMobile,
@@ -643,33 +612,6 @@ private fun MessageContentSelector(
             else -> {
                 // Fallback
             }
-        }
-
-        if (shouldShowSeparatePost && currentCaption != null) {
-            Spacer(modifier = Modifier.height(2.dp))
-            TextMessageBubble(
-                content = MessageContent.Text(text = currentCaption, entities = currentEntities),
-                msg = msg,
-                isOutgoing = isOutgoing,
-                isSameSenderAbove = true,
-                isSameSenderBelow = isSameSenderBelow,
-                fontSize = fontSize,
-                isGroup = isGroup,
-                bubbleRadius = bubbleRadius,
-                showLinkPreviews = showLinkPreviews,
-                onReplyClick = onGoToReply,
-                onReactionClick = { onReactionClick(msg.id, it) },
-                onInstantViewClick = onInstantViewClick,
-                onYouTubeClick = onYouTubeClick,
-                onClick = { offset ->
-                    onReplyClick(bubblePosition, bubbleSize, bubblePosition + offset)
-                },
-                onLongClick = { offset ->
-                    onReplyClick(bubblePosition, bubbleSize, bubblePosition + offset)
-                },
-                showReactions = true,
-                toProfile = toProfile
-            )
         }
     }
 }
