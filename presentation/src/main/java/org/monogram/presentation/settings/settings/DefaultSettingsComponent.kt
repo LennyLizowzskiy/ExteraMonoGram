@@ -180,4 +180,12 @@ class DefaultSettingsComponent(
     override fun onShowSupportClicked() {
         _state.update { it.copy(isSupportVisible = true) }
     }
+
+    override fun onMoreOptionsClicked() {
+        _state.update { it.copy(isMoreOptionsVisible = true) }
+    }
+
+    override fun onMoreOptionsDismissed() {
+        _state.update { it.copy(isMoreOptionsVisible = false) }
+    }
 }

@@ -14,6 +14,7 @@ import androidx.compose.material.icons.automirrored.rounded.ExitToApp
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PhoneIphone
 import androidx.compose.material.icons.filled.QrCode2
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
@@ -236,6 +237,56 @@ fun SettingsContent(component: SettingsComponent) {
         }
     }
 
+    if (state.isMoreOptionsVisible && state.currentUser?.username != null) {
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(
+            onDismissRequest = component::onMoreOptionsDismissed,
+            sheetState = sheetState,
+            containerColor = MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 48.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                SettingsItem(
+                    icon = Icons.Default.Share,
+                    title = stringResource(R.string.share_profile_title),
+                    subtitle = stringResource(R.string.share_profile_subtitle),
+                    iconBackgroundColor = blueColor,
+                    position = ItemPosition.TOP,
+                    onClick = {
+                        state.currentUser?.username?.let { username ->
+                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, "https://t.me/$username")
+                            }
+                            context.startActivity(Intent.createChooser(shareIntent, null))
+                        }
+                        component.onMoreOptionsDismissed()
+                    }
+                )
+                SettingsItem(
+                    icon = Icons.Rounded.Link,
+                    title = stringResource(R.string.copy_link_title),
+                    subtitle = stringResource(R.string.copy_link_subtitle),
+                    iconBackgroundColor = greenColor,
+                    position = ItemPosition.BOTTOM,
+                    onClick = {
+                        state.currentUser?.username?.let { username ->
+                            clipboardManager.setText(AnnotatedString("https://t.me/$username"))
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        }
+                        component.onMoreOptionsDismissed()
+                    }
+                )
+            }
+        }
+    }
+
     val iconTint = lerp(
         start = MaterialTheme.colorScheme.onSurface,
         stop = MaterialTheme.colorScheme.onSurface,
@@ -333,12 +384,14 @@ fun SettingsContent(component: SettingsComponent) {
                                     tint = iconTint
                                 )
                             }
-                            IconButton(onClick = { }) {
-                                Icon(
-                                    imageVector = Icons.Default.MoreVert,
-                                    contentDescription = null,
-                                    tint = iconTint
-                                )
+                            if (!state.currentUser?.username.isNullOrEmpty()) {
+                                IconButton(onClick = component::onMoreOptionsClicked) {
+                                    Icon(
+                                        imageVector = Icons.Default.MoreVert,
+                                        contentDescription = null,
+                                        tint = iconTint
+                                    )
+                                }
                             }
                         }
                     }
@@ -471,7 +524,7 @@ fun SettingsContent(component: SettingsComponent) {
                                     clipboardManager = clipboardManager,
                                     position = ItemPosition.MIDDLE
                                 )
-                            } else {
+                            } else if (!user.username.isNullOrEmpty()) {
                                 SettingsItem(
                                     icon = Icons.Rounded.Person,
                                     title = "@${user.username}",

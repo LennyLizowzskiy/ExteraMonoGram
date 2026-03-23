@@ -1490,4 +1490,10 @@
     <string name="instant_view_collapse">Свернуть</string>
     <string name="instant_view_expand">Развернуть</string>
     <string name="instant_view_map_prefix">Карта: %1$s, %2$s</string>
+
+    <!-- Settings Top -->
+    <string name="share_profile_title">Поделиться профилем</string>
+    <string name="share_profile_subtitle">Поделиться ссылкой на ваш профиль в Monogram</string>
+    <string name="copy_link_title">Копировать ссылку</string>
+    <string name="copy_link_subtitle">Копировать ссылку на профиль Monogram в буфер обмена</string>
 </resources>

@@ -31,6 +31,8 @@ interface SettingsComponent {
     fun onSupportClicked()
     fun onSupportDismissed()
     fun onShowSupportClicked()
+    fun onMoreOptionsClicked()
+    fun onMoreOptionsDismissed()
 
     data class State(
         val currentUser: UserModel? = null,
@@ -38,6 +40,7 @@ interface SettingsComponent {
         val isTMeLinkEnabled: Boolean = true,
         val isQrVisible: Boolean = false,
         val qrContent: String = "",
-        val isSupportVisible: Boolean = false
+        val isSupportVisible: Boolean = false,
+        val isMoreOptionsVisible: Boolean = false
     )
 }

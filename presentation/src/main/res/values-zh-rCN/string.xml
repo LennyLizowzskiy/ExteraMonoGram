@@ -1477,4 +1477,10 @@
     <string name="instant_view_collapse">折叠</string>
     <string name="instant_view_expand">展开</string>
     <string name="instant_view_map_prefix">地图: %1$s, %2$s</string>
+
+    <!-- Settings Top -->
+    <string name="share_profile_title">分享个人资料</string>
+    <string name="share_profile_subtitle">分享您的 Monogram 个人资料链接</string>
+    <string name="copy_link_title">复制链接</string>
+    <string name="copy_link_subtitle">将您的 Monogram 个人资料链接复制到剪贴板</string>
 </resources>

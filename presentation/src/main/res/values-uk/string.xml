@@ -1490,4 +1490,10 @@
     <string name="instant_view_collapse">Згорнути</string>
     <string name="instant_view_expand">Розгорнути</string>
     <string name="instant_view_map_prefix">Мапа: %1$s, %2$s</string>
+
+    <!-- Settings Top -->
+    <string name="share_profile_title">Поділитися профілем</string>
+    <string name="share_profile_subtitle">Поділитися посиланням на ваш профіль у Monogram</string>
+    <string name="copy_link_title">Копіювати посилання</string>
+    <string name="copy_link_subtitle">Копіювати посилання на профіль Monogram у буфер обміну</string>
 </resources>
