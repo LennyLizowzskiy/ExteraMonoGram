@@ -87,7 +87,11 @@ val dataModule = module {
             androidContext(),
             MonogramDatabase::class.java,
             "monogram_db"
-        ).addMigrations(MonogramDatabase.MIGRATION_14_15, MonogramDatabase.MIGRATION_15_16).build()
+        ).addMigrations(
+            MonogramDatabase.MIGRATION_14_15,
+            MonogramDatabase.MIGRATION_15_16,
+            MonogramDatabase.MIGRATION_16_17
+        ).build()
     }
     single { get<MonogramDatabase>().chatDao() }
     single { get<MonogramDatabase>().messageDao() }

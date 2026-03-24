@@ -17,7 +17,12 @@ class InMemoryChatLocalDataSource : ChatLocalDataSource {
     private val topics = ConcurrentHashMap<Long, MutableStateFlow<Map<Int, TopicEntity>>>()
 
     override fun getAllChats(): Flow<List<ChatEntity>> =
-        chats.map { it.values.sortedByDescending { chat -> chat.order } }
+        chats.map {
+            it.values.sortedWith(
+                compareByDescending<ChatEntity> { chat -> chat.isPinned }
+                    .thenByDescending { chat -> chat.order }
+            )
+        }
 
     override suspend fun getChat(chatId: Long): ChatEntity? = chats.value[chatId]
 

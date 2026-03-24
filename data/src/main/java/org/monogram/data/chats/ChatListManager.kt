@@ -11,20 +11,49 @@ class ChatListManager(
         excludedChatIds: List<Long> = emptyList(),
         mapChat: (TdApi.Chat, Long, Boolean) -> org.monogram.domain.models.ChatModel?
     ): List<org.monogram.domain.models.ChatModel> {
-        val entries = cache.activeListPositions.entries
-            .filter { it.key !in excludedChatIds }
-            .sortedByDescending { it.value.order }
+        val excludedSet = if (excludedChatIds.isEmpty()) emptySet() else excludedChatIds.toHashSet()
+        val pinnedEntries = ArrayList<Pair<Long, TdApi.ChatPosition>>()
+        val otherEntries = ArrayList<Pair<Long, TdApi.ChatPosition>>()
 
-        val pinnedEntries = entries.filter { it.value.isPinned }
-        val otherEntries = entries.filterNot { it.value.isPinned }
-        val limitedOthers = otherEntries.take((limit - pinnedEntries.size).coerceAtLeast(0))
-
-        return (pinnedEntries + limitedOthers)
-            .mapNotNull { (chatId, position) ->
-                cache.allChats[chatId]?.let { chat ->
-                    mapChat(chat, position.order, position.isPinned)
-                }
+        cache.activeListPositions.forEach { (chatId, position) ->
+            if (chatId in excludedSet) return@forEach
+            val entry = chatId to position
+            if (position.isPinned) {
+                pinnedEntries.add(entry)
+            } else {
+                otherEntries.add(entry)
             }
+        }
+
+        pinnedEntries.sortByDescending { it.second.order }
+        otherEntries.sortByDescending { it.second.order }
+
+        fun mapEntry(chatId: Long, position: TdApi.ChatPosition): org.monogram.domain.models.ChatModel? {
+            val chat = cache.allChats[chatId]
+            if (chat == null) {
+                if (position.order != 0L) onChatNeeded(chatId)
+                return null
+            }
+            return mapChat(chat, position.order, position.isPinned)
+        }
+
+        val result = ArrayList<org.monogram.domain.models.ChatModel>()
+        pinnedEntries.forEach { (chatId, position) ->
+            mapEntry(chatId, position)?.let(result::add)
+        }
+
+        val othersLimit = (limit - result.size).coerceAtLeast(0)
+        if (othersLimit == 0) return result
+
+        var loadedOthers = 0
+        for ((chatId, position) in otherEntries) {
+            val model = mapEntry(chatId, position) ?: continue
+            result.add(model)
+            loadedOthers += 1
+            if (loadedOthers >= othersLimit) break
+        }
+
+        return result
     }
 
     fun updateChatPositionInCache(

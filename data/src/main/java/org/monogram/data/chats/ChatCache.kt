@@ -267,6 +267,7 @@ class ChatCache : ChatsCacheDataSource, UserCacheDataSource {
 
     fun putChatFromEntity(entity: org.monogram.data.db.model.ChatEntity) {
         val chatList = if (entity.isArchived) TdApi.ChatListArchive() else TdApi.ChatListMain()
+        val cachedPositions = parsePositionsCache(entity.positionsCache)
         val chat = TdApi.Chat().apply {
             id = entity.id
             title = entity.title
@@ -284,7 +285,7 @@ class ChatCache : ChatsCacheDataSource, UserCacheDataSource {
                 id = entity.lastMessageId
                 isOutgoing = entity.isLastMessageOutgoing
             }
-            positions = arrayOf(TdApi.ChatPosition(chatList, entity.order, entity.isPinned, null))
+            positions = cachedPositions ?: arrayOf(TdApi.ChatPosition(chatList, entity.order, entity.isPinned, null))
             notificationSettings = TdApi.ChatNotificationSettings().apply {
                 muteFor = if (entity.isMuted) Int.MAX_VALUE else 0
             }
@@ -341,5 +342,43 @@ class ChatCache : ChatsCacheDataSource, UserCacheDataSource {
         chatPermissionsCache[entity.id] = chat.permissions
         onlineMemberCount[entity.id] = entity.onlineCount
         putChat(chat)
+    }
+
+    private fun parsePositionsCache(raw: String?): Array<TdApi.ChatPosition>? {
+        if (raw.isNullOrBlank()) return null
+
+        val parsed = raw.split("|").mapNotNull { token ->
+            val parts = token.split(":")
+            when (parts.firstOrNull()) {
+                "m" -> {
+                    if (parts.size < 3) return@mapNotNull null
+                    val order = parts[1].toLongOrNull() ?: return@mapNotNull null
+                    if (order == 0L) return@mapNotNull null
+                    val pinned = parts[2] == "1"
+                    TdApi.ChatPosition(TdApi.ChatListMain(), order, pinned, null)
+                }
+
+                "a" -> {
+                    if (parts.size < 3) return@mapNotNull null
+                    val order = parts[1].toLongOrNull() ?: return@mapNotNull null
+                    if (order == 0L) return@mapNotNull null
+                    val pinned = parts[2] == "1"
+                    TdApi.ChatPosition(TdApi.ChatListArchive(), order, pinned, null)
+                }
+
+                "f" -> {
+                    if (parts.size < 4) return@mapNotNull null
+                    val folderId = parts[1].toIntOrNull() ?: return@mapNotNull null
+                    val order = parts[2].toLongOrNull() ?: return@mapNotNull null
+                    if (order == 0L) return@mapNotNull null
+                    val pinned = parts[3] == "1"
+                    TdApi.ChatPosition(TdApi.ChatListFolder(folderId), order, pinned, null)
+                }
+
+                else -> null
+            }
+        }
+
+        return parsed.takeIf { it.isNotEmpty() }?.toTypedArray()
     }
 }

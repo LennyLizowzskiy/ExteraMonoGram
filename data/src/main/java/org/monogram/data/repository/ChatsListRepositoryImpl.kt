@@ -138,6 +138,8 @@ class ChatsListRepositoryImpl(
     private val invalidatedModels = ConcurrentHashMap.newKeySet<Long>()
     private var lastList: List<ChatModel>? = null
 
+    private val mainChatList = TdApi.ChatListMain()
+
     init {
         scope.launch(dispatchers.io) {
             myUserId = chatRemoteSource.getMyUserId()
@@ -203,7 +205,17 @@ class ChatsListRepositoryImpl(
 
                 val toSave = newList.map { model ->
                     val chat = cache.getChat(model.id)
-                    if (chat != null) chatMapper.mapToEntity(chat, model)
+                    if (chat != null) {
+                        val persistPosition = resolvePersistPosition(chat)
+                        val mapped = chatMapper.mapToEntity(chat, model)
+                        if (persistPosition != null &&
+                            (persistPosition.order != mapped.order || persistPosition.isPinned != mapped.isPinned)
+                        ) {
+                            mapped.copy(order = persistPosition.order, isPinned = persistPosition.isPinned)
+                        } else {
+                            mapped
+                        }
+                    }
                     else chatMapper.mapToEntity(model)
                 }
                     .filter { entity ->
@@ -426,9 +438,8 @@ class ChatsListRepositoryImpl(
         pendingSaveJobs[chatId]?.cancel()
         pendingSaveJobs[chatId] = scope.launch(dispatchers.io) {
             delay(2000)
-            val position = chat.positions.find { listManager.isSameChatList(it.list, activeChatList) }
-                ?: chat.positions.firstOrNull()
-            
+            val position = resolvePersistPosition(chat)
+
             val model = modelFactory.mapChatToModel(chat, position?.order ?: 0L, position?.isPinned ?: false)
             val entity = chatMapper.mapToEntity(chat, model)
 
@@ -459,6 +470,7 @@ class ChatsListRepositoryImpl(
                 old.basicGroupId != new.basicGroupId ||
                 old.supergroupId != new.supergroupId ||
                 old.secretChatId != new.secretChatId ||
+                old.positionsCache != new.positionsCache ||
                 old.isArchived != new.isArchived ||
                 old.memberCount != new.memberCount ||
                 old.onlineCount != new.onlineCount ||
@@ -510,6 +522,16 @@ class ChatsListRepositoryImpl(
                 old.permissionCanInviteUsers != new.permissionCanInviteUsers ||
                 old.permissionCanPinMessages != new.permissionCanPinMessages ||
                 old.permissionCanCreateTopics != new.permissionCanCreateTopics
+    }
+
+    private fun resolvePersistPosition(chat: TdApi.Chat): TdApi.ChatPosition? {
+        return chat.positions.find { pos ->
+            pos.order != 0L && listManager.isSameChatList(pos.list, mainChatList)
+        }
+            ?: chat.positions.find { pos ->
+                pos.order != 0L && listManager.isSameChatList(pos.list, activeChatList)
+            }
+            ?: chat.positions.firstOrNull { it.order != 0L }
     }
 
     private fun triggerUpdate(chatId: Long? = null) {

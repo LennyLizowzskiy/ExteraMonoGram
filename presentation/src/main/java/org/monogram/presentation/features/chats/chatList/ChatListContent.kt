@@ -50,6 +50,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.window.core.layout.WindowWidthSizeClass
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import org.monogram.domain.models.ChatType
@@ -639,17 +640,13 @@ fun ChatListContent(component: ChatListComponent) {
                     scrollStates[-2] = scrollState
                 }
 
-                val firstItemId = remember(state.selectedFolderId, state.isSearchActive) {
-                    derivedStateOf {
-                        if (state.selectedFolderId == -2 && !state.isSearchActive) {
-                            state.chatsByFolder[-2]?.firstOrNull()?.id
-                        } else {
-                            null
-                        }
-                    }
+                val firstItemId = if (state.selectedFolderId == -2 && !state.isSearchActive) {
+                    state.chatsByFolder[-2]?.firstOrNull()?.id
+                } else {
+                    null
                 }
 
-                LaunchedEffect(firstItemId.value) {
+                LaunchedEffect(firstItemId) {
                     if (state.selectedFolderId == -2 && !state.isSearchActive && !scrollState.isScrollInProgress && scrollState.firstVisibleItemIndex <= 1) {
                         scrollState.scrollToItem(0, 0)
                     }
@@ -661,6 +658,27 @@ fun ChatListContent(component: ChatListComponent) {
                             component.updateScrollPosition(-2, scrollState.firstVisibleItemIndex, scrollState.firstVisibleItemScrollOffset)
                         }
                     }
+                }
+
+                val isArchivedView = state.selectedFolderId == -2 && !state.isSearchActive
+                val archivedChats = if (isArchivedView) state.chatsByFolder[-2] ?: emptyList() else emptyList()
+                val isArchivedLoading = if (isArchivedView) state.isLoadingByFolder[-2] ?: false else false
+
+                LaunchedEffect(isArchivedView, archivedChats.size, isArchivedLoading, scrollState) {
+                    if (!isArchivedView || isArchivedLoading || archivedChats.isEmpty()) {
+                        return@LaunchedEffect
+                    }
+
+                    snapshotFlow {
+                        val lastVisible = scrollState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+                        lastVisible >= archivedChats.lastIndex - 5
+                    }
+                        .distinctUntilChanged()
+                        .collect { shouldLoad ->
+                            if (shouldLoad) {
+                                component.loadMore(-2)
+                            }
+                        }
                 }
 
                 LazyColumn(
@@ -895,20 +913,13 @@ fun ChatListContent(component: ChatListComponent) {
                             }
                         }
                     } else {
-                        val archivedChats = state.chatsByFolder[-2] ?: emptyList()
-                        val isArchivedLoading = state.isLoadingByFolder[-2] ?: false
-
                         if (archivedChats.isEmpty() && !isArchivedLoading) {
                             item {
                                 EmptyStateView(modifier = Modifier.fillParentMaxSize())
                             }
                         }
 
-                        itemsIndexed(items = archivedChats, key = { _, chat -> chat.id }) { index, chat ->
-                            if (index >= archivedChats.lastIndex - 5 && !isArchivedLoading) {
-                                LaunchedEffect(Unit) { component.loadMore(-2) }
-                            }
-
+                        itemsIndexed(items = archivedChats, key = { _, chat -> chat.id }) { _, chat ->
                             ChatListItem(
                                 modifier = Modifier.animateItem(),
                                 chat = chat,
@@ -951,13 +962,28 @@ fun ChatListContent(component: ChatListComponent) {
 
                     scrollStates[folderId] = scrollState
 
-                    val firstItemId = remember(folderId) {
-                        derivedStateOf { folderChats.firstOrNull()?.id }
-                    }
+                    val firstItemId = folderChats.firstOrNull()?.id
 
-                    LaunchedEffect(firstItemId.value) {
+                    LaunchedEffect(firstItemId) {
                         if (!scrollState.isScrollInProgress && scrollState.firstVisibleItemIndex <= 1) {
                             scrollState.scrollToItem(0, 0)
+                        }
+                    }
+
+                    val shouldLoadMoreFolder by remember(folderChats, isFolderLoading, scrollState) {
+                        derivedStateOf {
+                            if (isFolderLoading || folderChats.isEmpty()) {
+                                false
+                            } else {
+                                val lastVisible = scrollState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+                                lastVisible >= folderChats.lastIndex - 5
+                            }
+                        }
+                    }
+
+                    LaunchedEffect(shouldLoadMoreFolder, folderId) {
+                        if (shouldLoadMoreFolder) {
+                            component.loadMore(folderId)
                         }
                     }
 
@@ -994,11 +1020,7 @@ fun ChatListContent(component: ChatListComponent) {
                             itemsIndexed(
                                 items = folderChats,
                                 key = { _, chat -> chat.id }
-                            ) { index, chat ->
-                                if (index >= folderChats.lastIndex - 5 && !isFolderLoading) {
-                                    LaunchedEffect(Unit) { component.loadMore(folderId) }
-                                }
-
+                            ) { _, chat ->
                                 ChatListItem(
                                     modifier = Modifier.animateItem(),
                                     chat = chat,

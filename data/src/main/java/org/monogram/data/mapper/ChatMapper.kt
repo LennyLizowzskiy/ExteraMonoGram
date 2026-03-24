@@ -224,6 +224,7 @@ class ChatMapper(private val stringProvider: StringProvider) {
             basicGroupId = 0L,
             supergroupId = 0L,
             secretChatId = 0,
+            positionsCache = null,
             isArchived = domain.isArchived,
             memberCount = domain.memberCount,
             onlineCount = domain.onlineCount,
@@ -318,12 +319,31 @@ class ChatMapper(private val stringProvider: StringProvider) {
                 secretChatId = 0
             }
         }
+        val encodedPositions = encodePositions(chat.positions)
         return mapToEntity(domain).copy(
             privateUserId = privateUserId,
             basicGroupId = basicGroupId,
             supergroupId = supergroupId,
-            secretChatId = secretChatId
+            secretChatId = secretChatId,
+            positionsCache = encodedPositions
         )
+    }
+
+    private fun encodePositions(positions: Array<TdApi.ChatPosition>): String? {
+        if (positions.isEmpty()) return null
+
+        val encoded = positions.mapNotNull { pos ->
+            if (pos.order == 0L) return@mapNotNull null
+            val pinned = if (pos.isPinned) 1 else 0
+            when (val list = pos.list) {
+                is TdApi.ChatListMain -> "m:${pos.order}:$pinned"
+                is TdApi.ChatListArchive -> "a:${pos.order}:$pinned"
+                is TdApi.ChatListFolder -> "f:${list.chatFolderId}:${pos.order}:$pinned"
+                else -> null
+            }
+        }
+
+        return if (encoded.isEmpty()) null else encoded.joinToString("|")
     }
 
     fun formatMessageInfo(

@@ -21,6 +21,7 @@ data class ChatEntity(
     val basicGroupId: Long = 0L,
     val supergroupId: Long = 0L,
     val secretChatId: Int = 0,
+    val positionsCache: String? = null,
     val isArchived: Boolean,
     val memberCount: Int,
     val onlineCount: Int,

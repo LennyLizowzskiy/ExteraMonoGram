@@ -514,6 +514,7 @@ class UserRepositoryImpl(
             basicGroupId = basicGroupId,
             supergroupId = supergroupId,
             secretChatId = secretChatId,
+            positionsCache = encodePositions(positions),
             isArchived = isArchived,
             memberCount = cachedCounts.first,
             onlineCount = cachedCounts.second,
@@ -569,6 +570,21 @@ class UserRepositoryImpl(
             permissionCanCreateTopics = permissions.canCreateTopics,
             createdAt = System.currentTimeMillis()
         )
+    }
+
+    private fun encodePositions(positions: Array<TdApi.ChatPosition>): String? {
+        if (positions.isEmpty()) return null
+        val encoded = positions.mapNotNull { pos ->
+            if (pos.order == 0L) return@mapNotNull null
+            val pinned = if (pos.isPinned) 1 else 0
+            when (val list = pos.list) {
+                is TdApi.ChatListMain -> "m:${pos.order}:$pinned"
+                is TdApi.ChatListArchive -> "a:${pos.order}:$pinned"
+                is TdApi.ChatListFolder -> "f:${list.chatFolderId}:${pos.order}:$pinned"
+                else -> null
+            }
+        }
+        return if (encoded.isEmpty()) null else encoded.joinToString("|")
     }
 
     private fun TdApi.User.toEntity(): org.monogram.data.db.model.UserEntity {

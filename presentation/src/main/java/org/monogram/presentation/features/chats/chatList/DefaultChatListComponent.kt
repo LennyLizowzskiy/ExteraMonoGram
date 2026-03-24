@@ -52,6 +52,7 @@ class DefaultChatListComponent(
     private var searchJob: Job? = null
     private var isFetchingMoreMessages = false
     private var nextMessagesOffset = ""
+    @Volatile private var repositoryFolderId: Int = -1
 
     init {
         activeChatId.subscribe { id ->
@@ -73,9 +74,10 @@ class DefaultChatListComponent(
         repository.chatListFlow
             .onEach { list ->
                 val distinctList = list.distinctBy { it.id }
+                val folderId = repositoryFolderId
                 _state.update {
                     val newChatsByFolder = it.chatsByFolder.toMutableMap()
-                    newChatsByFolder[it.selectedFolderId] = distinctList
+                    newChatsByFolder[folderId] = distinctList
                     it.copy(chatsByFolder = newChatsByFolder)
                 }
             }
@@ -89,9 +91,10 @@ class DefaultChatListComponent(
 
         repository.isLoadingFlow
             .onEach { isLoading ->
+                val folderId = repositoryFolderId
                 _state.update {
                     val newLoadingByFolder = it.isLoadingByFolder.toMutableMap()
-                    newLoadingByFolder[it.selectedFolderId] = isLoading
+                    newLoadingByFolder[folderId] = isLoading
                     it.copy(isLoadingByFolder = newLoadingByFolder)
                 }
             }
@@ -183,6 +186,7 @@ class DefaultChatListComponent(
         _state.update { it.copy(selectedFolderId = id) }
 
         scope.launch(Dispatchers.IO) {
+            repositoryFolderId = id
             repository.selectFolder(id)
         }
     }
