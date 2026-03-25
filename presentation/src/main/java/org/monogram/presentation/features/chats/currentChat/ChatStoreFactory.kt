@@ -159,8 +159,8 @@ class ChatStoreFactory(
                     )
                 }
 
-                is Intent.AddToAdBlockWhitelist -> component.onAddToAdBlockWhitelist()
-                is Intent.RemoveFromAdBlockWhitelist -> component.onRemoveFromAdBlockWhitelist()
+                is Intent.AddToAdBlockWhitelist -> component.handleAddToAdBlockWhitelist()
+                is Intent.RemoveFromAdBlockWhitelist -> component.handleRemoveFromAdBlockWhitelist()
                 is Intent.ToggleMute -> component.handleToggleMute()
 
                 is Intent.SearchToggle -> component._state.update {

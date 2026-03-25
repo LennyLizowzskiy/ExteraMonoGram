@@ -139,6 +139,22 @@ internal fun DefaultChatComponent.handleToggleMute() {
     chatsListRepository.toggleMuteChats(setOf(chatId), !_state.value.isMuted)
 }
 
+internal fun DefaultChatComponent.handleAddToAdBlockWhitelist() {
+    val current = appPreferences.adBlockWhitelistedChannels.value
+    if (chatId in current) return
+
+    appPreferences.setAdBlockWhitelistedChannels(current + chatId)
+    loadMessages(force = true)
+}
+
+internal fun DefaultChatComponent.handleRemoveFromAdBlockWhitelist() {
+    val current = appPreferences.adBlockWhitelistedChannels.value
+    if (chatId !in current) return
+
+    appPreferences.setAdBlockWhitelistedChannels(current - chatId)
+    loadMessages(force = true)
+}
+
 internal fun DefaultChatComponent.handleClearHistory() {
     chatsListRepository.clearChatHistory(chatId, true)
 }
