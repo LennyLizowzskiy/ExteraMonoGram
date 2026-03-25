@@ -14,6 +14,9 @@ interface StickerPathDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPath(entity: StickerPathEntity)
 
+    @Query("DELETE FROM sticker_paths WHERE fileId = :fileId")
+    suspend fun deletePath(fileId: Long)
+
     @Query("DELETE FROM sticker_paths")
     suspend fun clearAll()
 }

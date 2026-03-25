@@ -46,6 +46,24 @@ fun MessageReactionsView(
     val context = LocalContext.current
     val emojiStyle by appPreferences.emojiStyle.collectAsState()
     val emojiFontFamily = remember(context, emojiStyle) { getEmojiFontFamily(context, emojiStyle) }
+    val customEmojiStickerSets by stickerRepository.customEmojiStickerSets.collectAsState()
+
+    LaunchedEffect(Unit) {
+        runCatching { stickerRepository.loadCustomEmojiStickerSets() }
+    }
+
+    val customEmojiFileIdsById = remember(customEmojiStickerSets) {
+        buildMap {
+            customEmojiStickerSets.forEach { set ->
+                set.stickers.forEach { sticker ->
+                    val customEmojiId = sticker.customEmojiId
+                    if (customEmojiId != null) {
+                        put(customEmojiId, sticker.id)
+                    }
+                }
+            }
+        }
+    }
 
     AnimatedVisibility(
         visible = reactions.isNotEmpty(),
@@ -85,6 +103,7 @@ fun MessageReactionsView(
                             onReactionClick = onReactionClick,
                             emojiFontFamily = emojiFontFamily,
                             stickerRepository = stickerRepository,
+                            customEmojiFileIdsById = customEmojiFileIdsById,
                             videoPlayerPool = videoPlayerPool
                         )
                     }
@@ -101,6 +120,7 @@ private fun MessageReactionItem(
     onReactionClick: (String) -> Unit,
     emojiFontFamily: FontFamily,
     stickerRepository: StickerRepository,
+    customEmojiFileIdsById: Map<Long, Long>,
     videoPlayerPool: VideoPlayerPool
 ) {
     val customEmojiId = reaction.customEmojiId
@@ -136,8 +156,9 @@ private fun MessageReactionItem(
         label = "reactionScale"
     )
 
-    val customEmojiPath by if (customEmojiId != null && reaction.customEmojiPath == null) {
-        stickerRepository.getStickerFile(customEmojiId).collectAsState(initial = null)
+    val customEmojiFileId = customEmojiId?.let(customEmojiFileIdsById::get)
+    val customEmojiPath by if (customEmojiFileId != null && reaction.customEmojiPath == null) {
+        stickerRepository.getStickerFile(customEmojiFileId).collectAsState(initial = null)
     } else {
         remember { mutableStateOf(reaction.customEmojiPath) }
     }

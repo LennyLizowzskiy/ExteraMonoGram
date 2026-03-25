@@ -94,15 +94,6 @@ class StickerRepositoryImpl(
         }
 
         scope.launch {
-            stickerSetDao.getInstalledStickerSetsByType("CUSTOM_EMOJI").collect { entities ->
-                if (customEmojiStickerSets.value.isEmpty()) {
-                    val sets = entities.mapNotNull { it.toModel() }
-                    if (sets.isNotEmpty()) cacheProvider.setCustomEmojiStickerSets(sets)
-                }
-            }
-        }
-
-        scope.launch {
             recentEmojiDao.getRecentEmojis().collect { entities ->
                 val models = entities.mapNotNull {
                     try {
@@ -138,22 +129,35 @@ class StickerRepositoryImpl(
 
     private suspend fun loadCustomEmojiStickerSets(force: Boolean) = customEmojiMutex.withLock {
         val now = System.currentTimeMillis()
+
         if (!force && customEmojiStickerSets.value.isNotEmpty()) {
             val hasMissingCustomEmojiIds = customEmojiStickerSets.value.any { set ->
                 set.stickerType == StickerType.CUSTOM_EMOJI && set.stickers.any { it.customEmojiId == null }
             }
-            if (!hasMissingCustomEmojiIds) return@withLock
+            val needsRefresh = lastCustomEmojiLoadTime == 0L || (now - lastCustomEmojiLoadTime) > 10 * 60 * 1000
+            if (!hasMissingCustomEmojiIds && !needsRefresh) return@withLock
         }
         if (force && customEmojiStickerSets.value.isNotEmpty() && now - lastCustomEmojiLoadTime < 1000) return@withLock
 
         val sets = remote.getInstalledStickerSets(StickerType.CUSTOM_EMOJI)
-        if (force && customEmojiStickerSets.value.map { it.id } == sets.map { it.id }) {
+        if (sets.isNotEmpty()) {
+            if (force && customEmojiStickerSets.value.map { it.id } == sets.map { it.id }) {
+                lastCustomEmojiLoadTime = System.currentTimeMillis()
+                return@withLock
+            }
+
+            cacheProvider.setCustomEmojiStickerSets(sets)
+            saveStickerSetsToDb(sets, "CUSTOM_EMOJI", isInstalled = true, isArchived = false)
             lastCustomEmojiLoadTime = System.currentTimeMillis()
             return@withLock
         }
 
-        cacheProvider.setCustomEmojiStickerSets(sets)
-        saveStickerSetsToDb(sets, "CUSTOM_EMOJI", isInstalled = true, isArchived = false)
+        if (customEmojiStickerSets.value.isEmpty()) {
+            val cached = stickerSetDao.getInstalledStickerSetsByType("CUSTOM_EMOJI").first().mapNotNull { it.toModel() }
+            if (cached.isNotEmpty()) {
+                cacheProvider.setCustomEmojiStickerSets(cached)
+            }
+        }
         lastCustomEmojiLoadTime = System.currentTimeMillis()
     }
 
@@ -306,20 +310,30 @@ class StickerRepositoryImpl(
     override suspend fun searchGifs(query: String) = remote.searchGifs(query)
 
     override fun getStickerFile(fileId: Long): Flow<String?> = channelFlow {
-        filePathsCache[fileId]?.let { send(it); return@channelFlow }
+        filePathsCache[fileId]?.let { path ->
+            if (path.isNotEmpty() && File(path).exists()) {
+                send(path)
+                return@channelFlow
+            }
+            filePathsCache.remove(fileId)
+            stickerPathDao.deletePath(fileId)
+        }
 
         val dbPath = stickerPathDao.getPath(fileId)
         if (!dbPath.isNullOrEmpty()) {
-            filePathsCache[fileId] = dbPath
-            send(dbPath)
-            return@channelFlow
+            if (File(dbPath).exists()) {
+                filePathsCache[fileId] = dbPath
+                send(dbPath)
+                return@channelFlow
+            }
+            stickerPathDao.deletePath(fileId)
         }
 
         val job = launch {
             fileUpdateHandler.downloadCompleted
                 .filter { it.first == fileId }
                 .collect { (_, path) ->
-                    if (path.isNotEmpty()) {
+                    if (path.isNotEmpty() && File(path).exists()) {
                         filePathsCache[fileId] = path
                         stickerPathDao.insertPath(StickerPathEntity(fileId, path))
                         send(path)
@@ -332,7 +346,7 @@ class StickerRepositoryImpl(
 
         val cachedPath = fileUpdateHandler.downloadCompleted
             .replayCache
-            .firstOrNull { it.first == fileId && it.second.isNotEmpty() }
+            .firstOrNull { it.first == fileId && it.second.isNotEmpty() && File(it.second).exists() }
             ?.second
 
         if (cachedPath != null) {
@@ -359,7 +373,19 @@ class StickerRepositoryImpl(
     private fun prefetchStickers(stickers: List<StickerModel>) {
         scope.launch(dispatchers.default) {
             stickers.forEach { sticker ->
-                if (filePathsCache[sticker.id].isNullOrEmpty() && stickerPathDao.getPath(sticker.id).isNullOrEmpty()) {
+                val cachedPath = filePathsCache[sticker.id]
+                if (!cachedPath.isNullOrEmpty() && !File(cachedPath).exists()) {
+                    filePathsCache.remove(sticker.id)
+                    stickerPathDao.deletePath(sticker.id)
+                }
+
+                val dbPath = stickerPathDao.getPath(sticker.id)
+                val hasValidDbPath = !dbPath.isNullOrEmpty() && File(dbPath).exists()
+                if (!dbPath.isNullOrEmpty() && !hasValidDbPath) {
+                    stickerPathDao.deletePath(sticker.id)
+                }
+
+                if (filePathsCache[sticker.id].isNullOrEmpty() && !hasValidDbPath) {
                     fileQueue.enqueue(sticker.id.toInt(), 16, FileDownloadQueue.DownloadType.STICKER)
                 }
             }

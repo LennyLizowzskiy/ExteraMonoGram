@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import org.koin.compose.koinInject
 import org.monogram.domain.models.StickerModel
 import org.monogram.domain.repository.StickerRepository
+import java.io.File
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -20,12 +21,15 @@ fun StickerItem(
     onLongClick: ((StickerModel) -> Unit)? = null,
     stickerRepository: StickerRepository = koinInject()
 ) {
-    var currentPath by remember(sticker.id, sticker.path) { mutableStateOf(sticker.path) }
+    var currentPath by remember(sticker.id, sticker.path) {
+        mutableStateOf(sticker.path.takeIf(::isExistingPath))
+    }
 
     LaunchedEffect(sticker.id, sticker.path) {
-        if (currentPath == null) {
+        if (currentPath == null || !isExistingPath(currentPath)) {
+            currentPath = null
             stickerRepository.getStickerFile(sticker.id).collect {
-                currentPath = it
+                currentPath = it?.takeIf(::isExistingPath)
             }
         }
     }
@@ -48,3 +52,5 @@ fun StickerItem(
         )
     }
 }
+
+private fun isExistingPath(path: String?): Boolean = !path.isNullOrEmpty() && File(path).exists()
