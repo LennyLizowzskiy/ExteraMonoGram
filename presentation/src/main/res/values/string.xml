@@ -541,7 +541,6 @@
     <string name="emoji_style_header">Emoji Style</string>
     <string name="theme_header">Theme</string>
     <string name="night_mode_title">Night Mode</string>
-    <string name="night_mode_description">Choose how Monogram switches between light and dark appearance.</string>
     <string name="night_mode_system">System</string>
     <string name="night_mode_light">Light</string>
     <string name="night_mode_dark">Dark</string>
@@ -549,11 +548,6 @@
     <string name="night_mode_brightness">Auto</string>
     <string name="night_mode_current_label">Current behavior</string>
     <string name="night_mode_current_format">Using: %1$s</string>
-    <string name="night_mode_system_description">Follow device theme</string>
-    <string name="night_mode_light_description">Always light mode</string>
-    <string name="night_mode_dark_description">Always dark mode</string>
-    <string name="night_mode_scheduled_description">Switch by time range</string>
-    <string name="night_mode_brightness_description">Switch by screen brightness</string>
     <string name="brightness_threshold_format">Brightness threshold: %1$d%%</string>
     <string name="brightness_threshold_description">Switch to dark theme when screen brightness is below this level.
     </string>
@@ -934,9 +928,6 @@
     <string name="action_send_items_count">Send %1$d items</string>
     <string name="action_send_media">Send media</string>
     <string name="action_cancel">Cancel</string>
-    <string name="attachment_options_title">Attachment Options</string>
-    <string name="attachment_option_gallery">Gallery</string>
-    <string name="attachment_option_camera">Camera</string>
 
     <!-- Bot -->
     <string name="bot_commands">Commands</string>
@@ -1631,41 +1622,43 @@
 
     <string name="chat_theme_editor_preset_classic_name">Classic</string>
     <string name="chat_theme_editor_preset_classic_description">Balanced blue with clear readability and neutral surfaces.</string>
-    <string name="chat_theme_editor_preset_classic_tag">Daily</string>
 
     <string name="chat_theme_editor_preset_forest_name">Forest</string>
     <string name="chat_theme_editor_preset_forest_description">Natural greens with calm contrast and soft container tones.</string>
-    <string name="chat_theme_editor_preset_forest_tag">Calm</string>
 
     <string name="chat_theme_editor_preset_ocean_name">Ocean</string>
     <string name="chat_theme_editor_preset_ocean_description">Cool cyan-blue gradient feeling with fresh light and deep dark mode.</string>
-    <string name="chat_theme_editor_preset_ocean_tag">Fresh</string>
 
     <string name="chat_theme_editor_preset_sunset_name">Sunset</string>
     <string name="chat_theme_editor_preset_sunset_description">Warm orange and coral accent set with high foreground clarity.</string>
-    <string name="chat_theme_editor_preset_sunset_tag">Warm</string>
 
     <string name="chat_theme_editor_preset_graphite_name">Graphite</string>
     <string name="chat_theme_editor_preset_graphite_description">Neutral grayscale base with blue-gray accents and strong structure.</string>
-    <string name="chat_theme_editor_preset_graphite_tag">Pro</string>
 
     <string name="chat_theme_editor_preset_mint_name">Mint</string>
     <string name="chat_theme_editor_preset_mint_description">Fresh mint and teal combination with gentle containers.</string>
-    <string name="chat_theme_editor_preset_mint_tag">Soft</string>
 
     <string name="chat_theme_editor_preset_ruby_name">Ruby</string>
     <string name="chat_theme_editor_preset_ruby_description">Deep red accent with neutral containers for strong action focus.</string>
-    <string name="chat_theme_editor_preset_ruby_tag">Bold</string>
 
     <string name="chat_theme_editor_preset_lavender_gray_name">Lavender Gray</string>
     <string name="chat_theme_editor_preset_lavender_gray_description">Muted violet-gray scheme with controlled saturation and clean contrast.</string>
-    <string name="chat_theme_editor_preset_lavender_gray_tag">Muted</string>
 
     <string name="chat_theme_editor_preset_sand_name">Sand</string>
     <string name="chat_theme_editor_preset_sand_description">Beige and amber palette tuned for very soft visual noise.</string>
-    <string name="chat_theme_editor_preset_sand_tag">Comfort</string>
 
     <string name="chat_theme_editor_preset_arctic_name">Arctic</string>
     <string name="chat_theme_editor_preset_arctic_description">Icy blue-white feel with high legibility and crisp boundaries.</string>
-    <string name="chat_theme_editor_preset_arctic_tag">Clean</string>
+
+    <string name="chat_theme_editor_preset_emerald_name">Emerald</string>
+    <string name="chat_theme_editor_preset_emerald_description">Vibrant green palette with clean surfaces and modern contrast.</string>
+
+    <string name="chat_theme_editor_preset_copper_name">Copper</string>
+    <string name="chat_theme_editor_preset_copper_description">Warm copper-orange theme that keeps text clear in both modes.</string>
+
+    <string name="chat_theme_editor_preset_sakura_name">Sakura</string>
+    <string name="chat_theme_editor_preset_sakura_description">Soft pink-magenta tones with gentle containers and strong highlights.</string>
+
+    <string name="chat_theme_editor_preset_nord_name">Nord</string>
+    <string name="chat_theme_editor_preset_nord_description">Cool northern blues with a calm, professional visual balance.</string>
 </resources>

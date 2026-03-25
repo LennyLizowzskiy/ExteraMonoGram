@@ -1579,41 +1579,43 @@
 
     <string name="chat_theme_editor_preset_classic_name">经典</string>
     <string name="chat_theme_editor_preset_classic_description">均衡的蓝色，具有清晰的易读性和中性的表面色。</string>
-    <string name="chat_theme_editor_preset_classic_tag">日常</string>
 
     <string name="chat_theme_editor_preset_forest_name">森林</string>
     <string name="chat_theme_editor_preset_forest_description">具有冷静对比度和柔和容器色调的自然绿色。</string>
-    <string name="chat_theme_editor_preset_forest_tag">冷静</string>
 
     <string name="chat_theme_editor_preset_ocean_name">海洋</string>
     <string name="chat_theme_editor_preset_ocean_description">清爽的青蓝色渐变，包含清新的浅色和深邃的深色模式。</string>
-    <string name="chat_theme_editor_preset_ocean_tag">清新</string>
 
     <string name="chat_theme_editor_preset_sunset_name">日落</string>
     <string name="chat_theme_editor_preset_sunset_description">温暖的橙色和珊瑚色调，具有极高的前景色清晰度。</string>
-    <string name="chat_theme_editor_preset_sunset_tag">温暖</string>
 
     <string name="chat_theme_editor_preset_graphite_name">石墨</string>
     <string name="chat_theme_editor_preset_graphite_description">中性灰阶基调，配以蓝灰色点缀，结构感强。</string>
-    <string name="chat_theme_editor_preset_graphite_tag">专业</string>
 
     <string name="chat_theme_editor_preset_mint_name">薄荷</string>
     <string name="chat_theme_editor_preset_mint_description">清新的薄荷色与鸭绿色的组合，容器色调温和。</string>
-    <string name="chat_theme_editor_preset_mint_tag">柔和</string>
 
     <string name="chat_theme_editor_preset_ruby_name">红宝石</string>
     <string name="chat_theme_editor_preset_ruby_description">深红色调配以中性容器，强调行动视觉焦点。</string>
-    <string name="chat_theme_editor_preset_ruby_tag">大胆</string>
 
     <string name="chat_theme_editor_preset_lavender_gray_name">薰衣草灰</string>
     <string name="chat_theme_editor_preset_lavender_gray_description">柔和的紫灰色调，具有受控的饱和度和洁净的对比度。</string>
-    <string name="chat_theme_editor_preset_lavender_gray_tag">沉静</string>
 
     <string name="chat_theme_editor_preset_sand_name">沙滩</string>
     <string name="chat_theme_editor_preset_sand_description">米色和琥珀色调，专为极柔和的视觉效果而设计。</string>
-    <string name="chat_theme_editor_preset_sand_tag">舒适</string>
 
     <string name="chat_theme_editor_preset_arctic_name">极地</string>
     <string name="chat_theme_editor_preset_arctic_description">冰蓝色与白色的观感，具有极佳的可读性和清晰的边界。</string>
-    <string name="chat_theme_editor_preset_arctic_tag">纯净</string>
+
+    <string name="chat_theme_editor_preset_emerald_name">祖母绿</string>
+    <string name="chat_theme_editor_preset_emerald_description">鲜明的绿色主题，搭配干净表面与现代对比度。</string>
+
+    <string name="chat_theme_editor_preset_copper_name">铜色</string>
+    <string name="chat_theme_editor_preset_copper_description">温暖的铜橙色方案，在浅色和深色模式下都保持清晰文本。</string>
+
+    <string name="chat_theme_editor_preset_sakura_name">樱花</string>
+    <string name="chat_theme_editor_preset_sakura_description">柔和的粉紫色调，容器过渡细腻，重点高亮更明显。</string>
+
+    <string name="chat_theme_editor_preset_nord_name">北境</string>
+    <string name="chat_theme_editor_preset_nord_description">冷调北欧蓝色风格，整体观感沉稳且专业。</string>
 </resources>

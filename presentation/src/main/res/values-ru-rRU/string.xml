@@ -1592,41 +1592,43 @@
 
     <string name="chat_theme_editor_preset_classic_name">Классика</string>
     <string name="chat_theme_editor_preset_classic_description">Сбалансированный синий с высокой читаемостью и нейтральным фоном.</string>
-    <string name="chat_theme_editor_preset_classic_tag">Повседневная</string>
 
     <string name="chat_theme_editor_preset_forest_name">Лес</string>
     <string name="chat_theme_editor_preset_forest_description">Натуральные зелёные тона со спокойным контрастом.</string>
-    <string name="chat_theme_editor_preset_forest_tag">Спокойная</string>
 
     <string name="chat_theme_editor_preset_ocean_name">Океан</string>
     <string name="chat_theme_editor_preset_ocean_description">Свежий сине-голубой градиент с глубоким тёмным режимом.</string>
-    <string name="chat_theme_editor_preset_ocean_tag">Свежая</string>
 
     <string name="chat_theme_editor_preset_sunset_name">Закат</string>
     <string name="chat_theme_editor_preset_sunset_description">Тёплые оранжевые и коралловые акценты с чётким текстом.</string>
-    <string name="chat_theme_editor_preset_sunset_tag">Тёплая</string>
 
     <string name="chat_theme_editor_preset_graphite_name">Графит</string>
     <string name="chat_theme_editor_preset_graphite_description">Нейтральная серая база с сине-серыми акцентами. Строгий стиль.</string>
-    <string name="chat_theme_editor_preset_graphite_tag">Профи</string>
 
     <string name="chat_theme_editor_preset_mint_name">Мята</string>
     <string name="chat_theme_editor_preset_mint_description">Сочетание мяты и морской волны с мягкими переходами.</string>
-    <string name="chat_theme_editor_preset_mint_tag">Мягкая</string>
 
     <string name="chat_theme_editor_preset_ruby_name">Рубин</string>
     <string name="chat_theme_editor_preset_ruby_description">Глубокие красные акценты для фокуса на важных действиях.</string>
-    <string name="chat_theme_editor_preset_ruby_tag">Смелая</string>
 
     <string name="chat_theme_editor_preset_lavender_gray_name">Лаванда</string>
     <string name="chat_theme_editor_preset_lavender_gray_description">Приглушённый фиолетово-серый стиль с чистым контрастом.</string>
-    <string name="chat_theme_editor_preset_lavender_gray_tag">Тихая</string>
 
     <string name="chat_theme_editor_preset_sand_name">Песок</string>
     <string name="chat_theme_editor_preset_sand_description">Бежевая и янтарная палитра для минимальной нагрузки на глаза.</string>
-    <string name="chat_theme_editor_preset_sand_tag">Уютная</string>
 
     <string name="chat_theme_editor_preset_arctic_name">Арктика</string>
     <string name="chat_theme_editor_preset_arctic_description">Ледяной сине-белый стиль с очень чёткими границами.</string>
-    <string name="chat_theme_editor_preset_arctic_tag">Чистая</string>
+
+    <string name="chat_theme_editor_preset_emerald_name">Изумруд</string>
+    <string name="chat_theme_editor_preset_emerald_description">Яркая зелёная палитра с чистыми поверхностями и современным контрастом.</string>
+
+    <string name="chat_theme_editor_preset_copper_name">Медь</string>
+    <string name="chat_theme_editor_preset_copper_description">Тёплая медно-оранжевая тема с чётким текстом в обоих режимах.</string>
+
+    <string name="chat_theme_editor_preset_sakura_name">Сакура</string>
+    <string name="chat_theme_editor_preset_sakura_description">Мягкие розово-пурпурные тона с деликатными контейнерами и яркими акцентами.</string>
+
+    <string name="chat_theme_editor_preset_nord_name">Норд</string>
+    <string name="chat_theme_editor_preset_nord_description">Прохладные северные синие оттенки со спокойным профессиональным балансом.</string>
 </resources>

@@ -52,7 +52,6 @@ private data class ThemePalette(
 private data class ThemePreset(
     val nameRes: Int,
     val descriptionRes: Int,
-    val tagRes: Int,
     val light: ThemePalette,
     val dark: ThemePalette
 )
@@ -127,63 +126,73 @@ fun ChatThemeEditorScreen(
         listOf(
             ThemePreset(R.string.chat_theme_editor_preset_classic_name,
                 R.string.chat_theme_editor_preset_classic_description,
-                R.string.chat_theme_editor_preset_classic_tag,
                 ThemePalette(0xFF3390EC.toInt(),0xFF4C7599.toInt(),0xFF00ACC1.toInt(),0xFFFFFBFE.toInt(),0xFFFFFBFE.toInt(),0xFFD4E3FF.toInt(),0xFFD0E4F7.toInt(),0xFFC4EEF4.toInt(),0xFFE1E2EC.toInt(),0xFF757680.toInt()),
                 ThemePalette(0xFF64B5F6.toInt(),0xFF81A9CA.toInt(),0xFF4DD0E1.toInt(),0xFF121212.toInt(),0xFF121212.toInt(),0xFF224A77.toInt(),0xFF334F65.toInt(),0xFF1E636F.toInt(),0xFF44474F.toInt(),0xFF8E9099.toInt())
             ),
             ThemePreset(R.string.chat_theme_editor_preset_forest_name,
                 R.string.chat_theme_editor_preset_forest_description,
-                R.string.chat_theme_editor_preset_forest_tag,
                 ThemePalette(0xFF2E7D32.toInt(),0xFF558B2F.toInt(),0xFF00796B.toInt(),0xFFF6FFF7.toInt(),0xFFFFFFFF.toInt(),0xFFCFEBD2.toInt(),0xFFDFEBD0.toInt(),0xFFCBE7E2.toInt(),0xFFDEE7DD.toInt(),0xFF6F7A73.toInt()),
                 ThemePalette(0xFF81C784.toInt(),0xFFA5D6A7.toInt(),0xFF80CBC4.toInt(),0xFF101A12.toInt(),0xFF142018.toInt(),0xFF284A30.toInt(),0xFF35523A.toInt(),0xFF25564F.toInt(),0xFF424D46.toInt(),0xFF909B94.toInt())
             ),
             ThemePreset(R.string.chat_theme_editor_preset_ocean_name,
                 R.string.chat_theme_editor_preset_ocean_description,
-                R.string.chat_theme_editor_preset_ocean_tag,
                 ThemePalette(0xFF0277BD.toInt(),0xFF0097A7.toInt(),0xFF26A69A.toInt(),0xFFF3FBFF.toInt(),0xFFFFFFFF.toInt(),0xFFC7E7F7.toInt(),0xFFC8EFF2.toInt(),0xFFD2F2EE.toInt(),0xFFDCE8EC.toInt(),0xFF6F7E86.toInt()),
                 ThemePalette(0xFF4FC3F7.toInt(),0xFF4DD0E1.toInt(),0xFF80CBC4.toInt(),0xFF0D1820.toInt(),0xFF122029.toInt(),0xFF1E4A63.toInt(),0xFF1E5460.toInt(),0xFF275A55.toInt(),0xFF3D4950.toInt(),0xFF8A979E.toInt())
             ),
             ThemePreset(R.string.chat_theme_editor_preset_sunset_name,
                 R.string.chat_theme_editor_preset_sunset_description,
-                R.string.chat_theme_editor_preset_sunset_tag,
                 ThemePalette(0xFFE65100.toInt(),0xFFEF6C00.toInt(),0xFFD84315.toInt(),0xFFFFF8F4.toInt(),0xFFFFFFFF.toInt(),0xFFFFDCCB.toInt(),0xFFFFE1CE.toInt(),0xFFFFD9D0.toInt(),0xFFF1E1D9.toInt(),0xFF7C726E.toInt()),
                 ThemePalette(0xFFFF8A65.toInt(),0xFFFFA726.toInt(),0xFFFF7043.toInt(),0xFF1A1310.toInt(),0xFF201814.toInt(),0xFF6A3B27.toInt(),0xFF704824.toInt(),0xFF6A332A.toInt(),0xFF4E433D.toInt(),0xFFA1958F.toInt())
             ),
             ThemePreset(R.string.chat_theme_editor_preset_graphite_name,
                 R.string.chat_theme_editor_preset_graphite_description,
-                R.string.chat_theme_editor_preset_graphite_tag,
                 ThemePalette(0xFF455A64.toInt(),0xFF607D8B.toInt(),0xFF546E7A.toInt(),0xFFF7F8F9.toInt(),0xFFFFFFFF.toInt(),0xFFD6E0E4.toInt(),0xFFD9E1E5.toInt(),0xFFD7E0E3.toInt(),0xFFE2E6E8.toInt(),0xFF737A7D.toInt()),
                 ThemePalette(0xFF90A4AE.toInt(),0xFFB0BEC5.toInt(),0xFF8FA1A8.toInt(),0xFF121416.toInt(),0xFF1A1E21.toInt(),0xFF34424A.toInt(),0xFF3C4A52.toInt(),0xFF35444B.toInt(),0xFF43494D.toInt(),0xFF949DA2.toInt())
             ),
             ThemePreset(R.string.chat_theme_editor_preset_mint_name,
                 R.string.chat_theme_editor_preset_mint_description,
-                R.string.chat_theme_editor_preset_mint_tag,
                 ThemePalette(0xFF00897B.toInt(),0xFF26A69A.toInt(),0xFF43A047.toInt(),0xFFF3FFFC.toInt(),0xFFFFFFFF.toInt(),0xFFC6EDE7.toInt(),0xFFD2F1EB.toInt(),0xFFD5ECD0.toInt(),0xFFD9EAE4.toInt(),0xFF70807A.toInt()),
                 ThemePalette(0xFF4DB6AC.toInt(),0xFF80CBC4.toInt(),0xFF81C784.toInt(),0xFF0F1C1A.toInt(),0xFF152422.toInt(),0xFF23534C.toInt(),0xFF2A5B54.toInt(),0xFF2F5634.toInt(),0xFF3D4E4A.toInt(),0xFF8D9F9A.toInt())
             ),
             ThemePreset(R.string.chat_theme_editor_preset_ruby_name,
                 R.string.chat_theme_editor_preset_ruby_description,
-                R.string.chat_theme_editor_preset_ruby_tag,
                 ThemePalette(0xFFB71C1C.toInt(),0xFFD84343.toInt(),0xFFC62828.toInt(),0xFFFFF8F8.toInt(),0xFFFFFFFF.toInt(),0xFFF7D6D6.toInt(),0xFFF4D9D9.toInt(),0xFFF1D2D2.toInt(),0xFFEEE1E1.toInt(),0xFF7F7070.toInt()),
                 ThemePalette(0xFFEF9A9A.toInt(),0xFFFF8A80.toInt(),0xFFE57373.toInt(),0xFF1C1111.toInt(),0xFF241717.toInt(),0xFF6A2E2E.toInt(),0xFF703535.toInt(),0xFF5F2E2E.toInt(),0xFF4A3C3C.toInt(),0xFFA59494.toInt())
             ),
             ThemePreset(R.string.chat_theme_editor_preset_lavender_gray_name,
                 R.string.chat_theme_editor_preset_lavender_gray_description,
-                R.string.chat_theme_editor_preset_lavender_gray_tag,
                 ThemePalette(0xFF6A5ACD.toInt(),0xFF7E71B2.toInt(),0xFF8D7AAE.toInt(),0xFFFAF9FF.toInt(),0xFFFFFFFF.toInt(),0xFFE2DDF9.toInt(),0xFFE4E1F1.toInt(),0xFFE8E2F2.toInt(),0xFFE6E3EC.toInt(),0xFF787483.toInt()),
                 ThemePalette(0xFFAFA4E8.toInt(),0xFFB8AFDD.toInt(),0xFFC1B5DE.toInt(),0xFF141221.toInt(),0xFF1B192A.toInt(),0xFF433A6C.toInt(),0xFF4A4267.toInt(),0xFF514865.toInt(),0xFF474556.toInt(),0xFF9A97A8.toInt())
             ),
             ThemePreset(R.string.chat_theme_editor_preset_sand_name,
                 R.string.chat_theme_editor_preset_sand_description,
-                R.string.chat_theme_editor_preset_sand_tag,
                 ThemePalette(0xFF8D6E63.toInt(),0xFFA1887F.toInt(),0xFFBCAAA4.toInt(),0xFFFFFCF7.toInt(),0xFFFFFFFF.toInt(),0xFFEEDFD6.toInt(),0xFFF0E3DB.toInt(),0xFFF1E8E2.toInt(),0xFFEAE4DE.toInt(),0xFF7E766F.toInt()),
                 ThemePalette(0xFFD7CCC8.toInt(),0xFFBCAAA4.toInt(),0xFFA1887F.toInt(),0xFF181411.toInt(),0xFF201A16.toInt(),0xFF5A4A3F.toInt(),0xFF594B42.toInt(),0xFF4F433B.toInt(),0xFF47413D.toInt(),0xFF9E948D.toInt())
             ),
             ThemePreset(R.string.chat_theme_editor_preset_arctic_name,
                 R.string.chat_theme_editor_preset_arctic_description,
-                R.string.chat_theme_editor_preset_arctic_tag,
                 ThemePalette(0xFF1976D2.toInt(),0xFF64B5F6.toInt(),0xFF00BCD4.toInt(),0xFFF6FCFF.toInt(),0xFFFFFFFF.toInt(),0xFFD7E9F9.toInt(),0xFFDDF0FF.toInt(),0xFFD3F2F6.toInt(),0xFFE1EBF0.toInt(),0xFF75828A.toInt()),
                 ThemePalette(0xFF90CAF9.toInt(),0xFF81D4FA.toInt(),0xFF80DEEA.toInt(),0xFF101820.toInt(),0xFF16212A.toInt(),0xFF29465F.toInt(),0xFF2C5068.toInt(),0xFF285760.toInt(),0xFF404C55.toInt(),0xFF93A0A8.toInt())
+            ),
+            ThemePreset(R.string.chat_theme_editor_preset_emerald_name,
+                R.string.chat_theme_editor_preset_emerald_description,
+                ThemePalette(0xFF0F9D58.toInt(),0xFF2E7D32.toInt(),0xFF00897B.toInt(),0xFFF4FFF8.toInt(),0xFFFFFFFF.toInt(),0xFFCBF0DB.toInt(),0xFFD8EED2.toInt(),0xFFCBEDE7.toInt(),0xFFDEE9E2.toInt(),0xFF6F7E74.toInt()),
+                ThemePalette(0xFF66D19E.toInt(),0xFF81C784.toInt(),0xFF4DB6AC.toInt(),0xFF0F1913.toInt(),0xFF15211A.toInt(),0xFF1D5A3A.toInt(),0xFF275238.toInt(),0xFF1E5B53.toInt(),0xFF3E4E45.toInt(),0xFF8E9E94.toInt())
+            ),
+            ThemePreset(R.string.chat_theme_editor_preset_copper_name,
+                R.string.chat_theme_editor_preset_copper_description,
+                ThemePalette(0xFFBF360C.toInt(),0xFFD84315.toInt(),0xFFF57C00.toInt(),0xFFFFF8F2.toInt(),0xFFFFFFFF.toInt(),0xFFFFDDCF.toInt(),0xFFF8DED4.toInt(),0xFFFFE5CC.toInt(),0xFFEFE3DA.toInt(),0xFF7E726B.toInt()),
+                ThemePalette(0xFFFFAB91.toInt(),0xFFFF8A65.toInt(),0xFFFFB74D.toInt(),0xFF1D130F.toInt(),0xFF241915.toInt(),0xFF6A3A2A.toInt(),0xFF6A362A.toInt(),0xFF6F4A20.toInt(),0xFF4E433C.toInt(),0xFFA2958D.toInt())
+            ),
+            ThemePreset(R.string.chat_theme_editor_preset_sakura_name,
+                R.string.chat_theme_editor_preset_sakura_description,
+                ThemePalette(0xFFC2185B.toInt(),0xFFD81B60.toInt(),0xFFAD1457.toInt(),0xFFFFF7FB.toInt(),0xFFFFFFFF.toInt(),0xFFF8D6E7.toInt(),0xFFF4D4E2.toInt(),0xFFF2D0DE.toInt(),0xFFEFE1E8.toInt(),0xFF7E6F78.toInt()),
+                ThemePalette(0xFFF48FB1.toInt(),0xFFF06292.toInt(),0xFFE57399.toInt(),0xFF1C1218.toInt(),0xFF251921.toInt(),0xFF69334E.toInt(),0xFF6C3550.toInt(),0xFF5A2C46.toInt(),0xFF4B3E46.toInt(),0xFFA5949E.toInt())
+            ),
+            ThemePreset(R.string.chat_theme_editor_preset_nord_name,
+                R.string.chat_theme_editor_preset_nord_description,
+                ThemePalette(0xFF3B5B92.toInt(),0xFF607D8B.toInt(),0xFF4FC3F7.toInt(),0xFFF5F8FC.toInt(),0xFFFFFFFF.toInt(),0xFFD4E0F2.toInt(),0xFFDCE4EC.toInt(),0xFFD2EAF5.toInt(),0xFFE2E8EF.toInt(),0xFF727D88.toInt()),
+                ThemePalette(0xFF8FA8D6.toInt(),0xFF90A4AE.toInt(),0xFF81D4FA.toInt(),0xFF111722.toInt(),0xFF18202C.toInt(),0xFF2F456C.toInt(),0xFF384B58.toInt(),0xFF2D4F66.toInt(),0xFF404954.toInt(),0xFF94A0AB.toInt())
             )
         )
     }
@@ -467,15 +476,7 @@ private fun PresetCard(p: ThemePreset, onLight: () -> Unit, onDark: () -> Unit, 
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
-            AssistChip(
-                onClick = {},
-                label = { Text(stringResource(p.tagRes)) },
-                enabled = false,
-                modifier = Modifier
-                    .padding(horizontal = 10.dp)
-                    .height(28.dp)
-            )
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(6.dp))
             Row(
                 Modifier
                     .fillMaxWidth()
