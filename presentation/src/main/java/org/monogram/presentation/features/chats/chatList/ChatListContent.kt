@@ -335,13 +335,34 @@ fun ChatListContent(component: ChatListComponent) {
 
     val isFabExpanded by remember { derivedStateOf { headerOffsetPx > -10f } }
 
+    var cachedStatusEmojiPath by remember(state.currentUser?.id) {
+        mutableStateOf(state.currentUser?.statusEmojiPath)
+    }
+
+    LaunchedEffect(state.currentUser?.id, state.currentUser?.statusEmojiPath) {
+        val statusEmojiPath = state.currentUser?.statusEmojiPath
+        if (!statusEmojiPath.isNullOrBlank()) {
+            cachedStatusEmojiPath = statusEmojiPath
+        }
+    }
+
+    val currentUser = remember(state.currentUser, cachedStatusEmojiPath) {
+        state.currentUser?.let { user ->
+            if (user.statusEmojiId != 0L && user.statusEmojiPath.isNullOrBlank() && !cachedStatusEmojiPath.isNullOrBlank()) {
+                user.copy(statusEmojiPath = cachedStatusEmojiPath)
+            } else {
+                user
+            }
+        }
+    }
+
     if (showAccountMenu) {
         AccountMenu(
-            user = state.currentUser,
+            user = currentUser,
             attachMenuBots = state.attachMenuBots,
             onDismiss = { showAccountMenu = false },
             onSavedMessagesClick = {
-                state.currentUser?.id?.let { component.onChatClicked(it) }
+                currentUser?.id?.let { component.onChatClicked(it) }
             },
             onSettingsClick = { component.onSettingsClicked() },
             onAddAccountClick = { /* TODO */ },
@@ -349,7 +370,7 @@ fun ChatListContent(component: ChatListComponent) {
                 component.onOpenInstantView("https://telegram.org/faq#general-questions")
             },
             onProfileClick = {
-                state.currentUser?.id?.let { component.onProfileClicked(it) }
+                currentUser?.id?.let { component.onProfileClicked(it) }
             },
             updateState = state.updateState,
             onUpdateClick = { component.onUpdateClicked() },
@@ -459,7 +480,7 @@ fun ChatListContent(component: ChatListComponent) {
                             )
                         } else {
                             ChatListTopBar(
-                                user = state.currentUser,
+                                user = currentUser,
                                 connectionStatus = state.connectionStatus,
                                 isProxyEnabled = state.isProxyEnabled,
                                 onRetryConnection = { component.retryConnection() },
