@@ -618,100 +618,150 @@ fun <T> ExpandableListSection(
 fun RevenueStatistics(stats: ChatRevenueStatisticsModel, onLoadGraph: (String) -> Unit) {
     SectionHeader(stringResource(R.string.statistics_revenue_header))
 
-    val animatedBalance by animateFloatAsState(
-        targetValue = stats.revenueAmount.availableBalance.toFloat(),
-        animationSpec = tween(1500, easing = FastOutSlowInEasing), label = "balance"
-    )
+    val available = stats.revenueAmount.availableBalance
+    val total = stats.revenueAmount.balance
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(32.dp),
-        color = MaterialTheme.colorScheme.primaryContainer,
-        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-        shadowElevation = 4.dp
+        shape = RoundedCornerShape(28.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
-            Canvas(modifier = Modifier.matchParentSize()) {
-                drawCircle(
-                    color = Color.White.copy(alpha = 0.05f),
-                    radius = size.width * 0.6f,
-                    center = Offset(size.width, 0f)
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = stringResource(R.string.statistics_available_balance),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text(
+                            text = formatLongCompact(available),
+                            style = MaterialTheme.typography.headlineLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.Black
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = stats.revenueAmount.currency,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                    }
+                }
+
+                Surface(
+                    color = Color(0xFF34A853).copy(alpha = 0.14f),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Payments,
+                            contentDescription = null,
+                            tint = Color(0xFF34A853),
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Text(
+                            text = stringResource(R.string.revenue_title),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Color(0xFF34A853),
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                RevenueMetricCard(
+                    modifier = Modifier.weight(1f),
+                    label = stringResource(R.string.statistics_total_balance),
+                    value = "${formatLongCompact(total)} ${stats.revenueAmount.currency}",
+                    tint = Color(0xFF4285F4)
                 )
-                drawCircle(
-                    color = Color.Black.copy(alpha = 0.05f),
-                    radius = size.width * 0.4f,
-                    center = Offset(0f, size.height)
+                RevenueMetricCard(
+                    modifier = Modifier.weight(1f),
+                    label = stringResource(R.string.statistics_available_balance),
+                    value = "${formatLongCompact(available)} ${stats.revenueAmount.currency}",
+                    tint = Color(0xFFFF9800)
                 )
             }
 
-            Column(
-                modifier = Modifier.padding(32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                shape = RoundedCornerShape(12.dp)
             ) {
-                Surface(
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.15f),
-                    shape = CircleShape
-                ) {
-                    Text(
-                        stringResource(R.string.statistics_available_balance),
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-                Row(verticalAlignment = Alignment.Bottom) {
-                    Text(
-                        text = String.format("%.2f", animatedBalance),
-                        style = MaterialTheme.typography.displayMedium,
-                        fontWeight = FontWeight.Black
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = stats.revenueAmount.currency,
-                        style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier.padding(bottom = 6.dp),
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                    )
-                }
-                Spacer(modifier = Modifier.height(32.dp))
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
-                        Text(
-                            stringResource(R.string.statistics_total_balance),
-                            style = MaterialTheme.typography.labelMedium,
-                            modifier = Modifier.alpha(0.7f)
-                        )
-                        Text(
-                            "${stats.revenueAmount.balance} ${stats.revenueAmount.currency}",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(
-                            stringResource(R.string.statistics_exchange_rate),
-                            style = MaterialTheme.typography.labelMedium,
-                            modifier = Modifier.alpha(0.7f)
-                        )
-                        Text(
-                            "1 USD ≈ ${stats.usdRate}",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+                    Text(
+                        text = stringResource(R.string.statistics_exchange_rate),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "1 USD = ${
+                            String.format(
+                                Locale.getDefault(),
+                                "%.4f",
+                                stats.usdRate
+                            )
+                        } ${stats.revenueAmount.currency}",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
             }
         }
     }
 
-    Spacer(modifier = Modifier.height(24.dp))
+    Spacer(modifier = Modifier.height(16.dp))
     GraphSection(stringResource(R.string.statistics_revenue_growth), stats.revenueGraph, Color(0xFF34A853), onLoadGraph)
     GraphSection(stringResource(R.string.statistics_hourly_revenue), stats.revenueByHourGraph, Color(0xFFFBBC04), onLoadGraph)
+}
+
+@Composable
+private fun RevenueMetricCard(modifier: Modifier = Modifier, label: String, value: String, tint: Color) {
+    Surface(
+        modifier = modifier,
+        color = tint.copy(alpha = 0.12f),
+        shape = RoundedCornerShape(14.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = tint
+            )
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
 }
 
 @Composable
@@ -1426,6 +1476,16 @@ private fun formatStatNumber(value: Int): String {
     return when {
         absValue >= 1_000_000 -> String.format(Locale.getDefault(), "%.1fM", value / 1_000_000f)
         absValue >= 1_000 -> String.format(Locale.getDefault(), "%.1fK", value / 1_000f)
+        else -> value.toString()
+    }
+}
+
+private fun formatLongCompact(value: Long): String {
+    val absValue = abs(value)
+    return when {
+        absValue >= 1_000_000_000L -> String.format(Locale.getDefault(), "%.1fB", value / 1_000_000_000f)
+        absValue >= 1_000_000L -> String.format(Locale.getDefault(), "%.1fM", value / 1_000_000f)
+        absValue >= 1_000L -> String.format(Locale.getDefault(), "%.1fK", value / 1_000f)
         else -> value.toString()
     }
 }

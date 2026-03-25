@@ -44,6 +44,7 @@ fun ProfileContent(component: ProfileComponent) {
 
     val chat = state.chat
     val user = state.user
+    val isCurrentUserProfile = user != null && state.currentUser?.id == user.id
 
     val avatarPath = remember(state.profilePhotos, state.chat, state.user, state.personalAvatarPath) {
         state.personalAvatarPath
@@ -63,12 +64,33 @@ fun ProfileContent(component: ProfileComponent) {
 
     val membersCountFormat = stringResource(R.string.members_count_format)
     val membersOnlineCountFormat = stringResource(R.string.members_online_count_format)
-    val subtitle = remember(user, chat, membersCountFormat, membersOnlineCountFormat) {
-        if (chat?.isGroup == true || chat?.isChannel == true) {
-            val members = String.format(membersCountFormat, chat.memberCount)
-            if (chat.onlineCount > 0) String.format(membersOnlineCountFormat, members, chat.onlineCount) else members
-        } else {
-            getUserStatusText(user, context)
+    val ownProfileSubtitle = stringResource(R.string.menu_my_profile_subtitle)
+    val subtitle = remember(
+        user,
+        chat,
+        isCurrentUserProfile,
+        membersCountFormat,
+        membersOnlineCountFormat,
+        ownProfileSubtitle
+    ) {
+        when {
+            chat?.isGroup == true || chat?.isChannel == true -> {
+                val members = String.format(membersCountFormat, chat.memberCount)
+                if (chat.onlineCount > 0) String.format(
+                    membersOnlineCountFormat,
+                    members,
+                    chat.onlineCount
+                ) else members
+            }
+
+            isCurrentUserProfile -> {
+                user.username
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let { "$ownProfileSubtitle • @$it" }
+                    ?: ownProfileSubtitle
+            }
+
+            else -> getUserStatusText(user, context)
         }
     }
 
@@ -92,9 +114,26 @@ fun ProfileContent(component: ProfileComponent) {
     }
 
     val searchNotImplemented = stringResource(R.string.search_not_implemented)
-    val shareNotImplemented = stringResource(R.string.share_not_implemented)
     val blockNotImplemented = stringResource(R.string.block_not_implemented)
     val deleteNotImplemented = stringResource(R.string.delete_not_implemented)
+    val linkCopied = stringResource(R.string.link_copied)
+    val userIdCopied = stringResource(R.string.logs_user_id_copied)
+
+    val isGroupOrChannel = chat?.isGroup == true || chat?.isChannel == true
+    val canEditTopBar = when {
+        isCurrentUserProfile -> true
+        isGroupOrChannel -> chat.isAdmin || chat.permissions.canChangeInfo
+        else -> user?.isContact == true
+    }
+    val shareLink = remember(user, chat, state.publicLink) {
+        user?.username?.takeIf { it.isNotBlank() }?.let { "https://t.me/$it" }
+            ?: chat?.username?.takeIf { it.isNotBlank() }?.let { "https://t.me/$it" }
+            ?: state.publicLink?.takeIf { it.isNotBlank() }
+    }
+    val fallbackShareText = remember(isCurrentUserProfile, user) {
+        if (isCurrentUserProfile) user.id.toString() else null
+    }
+    val canShareTopBar = !shareLink.isNullOrEmpty() || !fallbackShareText.isNullOrEmpty()
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
@@ -106,8 +145,20 @@ fun ProfileContent(component: ProfileComponent) {
                     userModel = user,
                     chatModel = chat,
                     isVerified = user?.isVerified == true || chat?.isVerified == true,
+                    canSearch = false,
+                    canShare = canShareTopBar,
+                    canEdit = canEditTopBar,
+                    canBlock = false,
+                    canDelete = false,
                     onSearch = { Toast.makeText(context, searchNotImplemented, Toast.LENGTH_SHORT).show() },
-                    onShare = { Toast.makeText(context, shareNotImplemented, Toast.LENGTH_SHORT).show() },
+                    onShare = {
+                        val valueToCopy = shareLink ?: fallbackShareText
+                        if (valueToCopy != null) {
+                            clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(valueToCopy))
+                            val copiedMessage = if (shareLink != null) linkCopied else userIdCopied
+                            Toast.makeText(context, copiedMessage, Toast.LENGTH_SHORT).show()
+                        }
+                    },
                     onEdit = component::onEdit,
                     onBlock = { Toast.makeText(context, blockNotImplemented, Toast.LENGTH_SHORT).show() },
                     onDelete = { Toast.makeText(context, deleteNotImplemented, Toast.LENGTH_SHORT).show() }

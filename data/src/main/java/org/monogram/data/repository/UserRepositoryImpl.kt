@@ -273,9 +273,6 @@ class UserRepositoryImpl(
             ?: return null
 
         val dbFullInfo = chatLocal.getChatFullInfo(chatId)
-        if (dbFullInfo != null) {
-            return dbFullInfo.toDomain()
-        }
 
         return when (val type = chat.type) {
             is TdApi.ChatTypeSupergroup -> {
@@ -284,16 +281,17 @@ class UserRepositoryImpl(
                 fullInfo?.let {
                     chatLocal.insertChatFullInfo(it.toEntity(chatId))
                 }
-                fullInfo?.mapSupergroupFullInfoToChat(supergroup)
+                fullInfo?.mapSupergroupFullInfoToChat(supergroup) ?: dbFullInfo?.toDomain()
             }
             is TdApi.ChatTypeBasicGroup -> {
                 val fullInfo = remote.getBasicGroupFullInfo(type.basicGroupId)
                 fullInfo?.let {
                     chatLocal.insertChatFullInfo(it.toEntity(chatId))
                 }
-                fullInfo?.mapBasicGroupFullInfoToChat()
+                fullInfo?.mapBasicGroupFullInfoToChat() ?: dbFullInfo?.toDomain()
             }
-            else -> null
+
+            else -> dbFullInfo?.toDomain()
         }
     }
 

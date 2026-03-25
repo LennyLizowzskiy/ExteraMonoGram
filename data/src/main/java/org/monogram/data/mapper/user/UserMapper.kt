@@ -380,7 +380,7 @@ fun TdApi.SupergroupFullInfo.toEntity(chatId: Long): ChatFullInfoEntity {
         hasPostedToProfileStories = false,
         setChatBackground = false,
         incomingPaidMessageStarCount = 0,
-        outgoingPaidMessageStarCount = 0,
+        outgoingPaidMessageStarCount = outgoingPaidMessageStarCount,
         createdAt = System.currentTimeMillis()
     )
 }
@@ -529,6 +529,7 @@ fun ChatFullInfoEntity.toDomain(): ChatFullInfoModel {
         description = description,
         inviteLink = inviteLink,
         memberCount = memberCount,
+        onlineCount = onlineCount,
         administratorCount = administratorCount,
         restrictedCount = restrictedCount,
         bannedCount = bannedCount,
@@ -539,6 +540,7 @@ fun ChatFullInfoEntity.toDomain(): ChatFullInfoModel {
         canGetRevenueStatistics = canGetRevenueStatistics,
         linkedChatId = linkedChatId,
         businessInfo = null,
+        note = note,
         canBeCalled = canBeCalled,
         supportsVideoCalls = supportsVideoCalls,
         hasPrivateCalls = hasPrivateCalls,

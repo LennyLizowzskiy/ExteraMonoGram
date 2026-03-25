@@ -42,6 +42,11 @@ fun ProfileTopBar(
     userModel: UserModel?,
     chatModel: ChatModel?,
     isVerified: Boolean,
+    canSearch: Boolean = false,
+    canShare: Boolean = false,
+    canEdit: Boolean = false,
+    canBlock: Boolean = false,
+    canDelete: Boolean = false,
     onSearch: () -> Unit = {},
     onShare: () -> Unit = {},
     onEdit: () -> Unit = {},
@@ -49,6 +54,7 @@ fun ProfileTopBar(
     onDelete: () -> Unit = {}
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    val hasMenuActions = canShare || canEdit || canBlock || canDelete
 
     val iconTint = lerp(
         start = MaterialTheme.colorScheme.onSurface,
@@ -124,21 +130,27 @@ fun ProfileTopBar(
                 }
             },
             actions = {
-                Card(
-                    modifier = Modifier.padding(8.dp),
-                    shape = RoundedCornerShape(50),
-                    colors = CardDefaults.cardColors(containerColor = buttonBackground)
-                ) {
-                    Row {
-                        IconButton(onClick = onSearch) {
-                            Icon(
-                                Icons.Rounded.Search,
-                                contentDescription = stringResource(R.string.search_section_chats),
-                                tint = iconTint
-                            )
-                        }
-                        IconButton(onClick = { showMenu = true }) {
-                            Icon(Icons.Rounded.MoreVert, contentDescription = null, tint = iconTint)
+                if (canSearch || hasMenuActions) {
+                    Card(
+                        modifier = Modifier.padding(8.dp),
+                        shape = RoundedCornerShape(50),
+                        colors = CardDefaults.cardColors(containerColor = buttonBackground)
+                    ) {
+                        Row {
+                            if (canSearch) {
+                                IconButton(onClick = onSearch) {
+                                    Icon(
+                                        Icons.Rounded.Search,
+                                        contentDescription = stringResource(R.string.search_section_chats),
+                                        tint = iconTint
+                                    )
+                                }
+                            }
+                            if (hasMenuActions) {
+                                IconButton(onClick = { showMenu = true }) {
+                                    Icon(Icons.Rounded.MoreVert, contentDescription = null, tint = iconTint)
+                                }
+                            }
                         }
                     }
                 }
@@ -186,23 +198,27 @@ fun ProfileTopBar(
                             .padding(top = 56.dp, end = 16.dp)
                     ) {
                         ViewerSettingsDropdown {
-                            MenuOptionRow(
-                                icon = Icons.Rounded.Share,
-                                title = stringResource(R.string.menu_share),
-                                onClick = {
-                                    showMenu = false
-                                    onShare()
-                                }
-                            )
-                            MenuOptionRow(
-                                icon = Icons.Rounded.Edit,
-                                title = stringResource(R.string.menu_edit),
-                                onClick = {
-                                    showMenu = false
-                                    onEdit()
-                                }
-                            )
-                            if (userModel != null) {
+                            if (canShare) {
+                                MenuOptionRow(
+                                    icon = Icons.Rounded.Share,
+                                    title = stringResource(R.string.menu_share),
+                                    onClick = {
+                                        showMenu = false
+                                        onShare()
+                                    }
+                                )
+                            }
+                            if (canEdit) {
+                                MenuOptionRow(
+                                    icon = Icons.Rounded.Edit,
+                                    title = stringResource(R.string.menu_edit),
+                                    onClick = {
+                                        showMenu = false
+                                        onEdit()
+                                    }
+                                )
+                            }
+                            if (canBlock && userModel != null) {
                                 MenuOptionRow(
                                     icon = Icons.Rounded.Block,
                                     title = stringResource(R.string.menu_block_user),
@@ -214,18 +230,22 @@ fun ProfileTopBar(
                                     }
                                 )
                             }
-                            MenuOptionRow(
-                                icon = Icons.Rounded.Delete,
-                                title = if (chatModel?.isGroup == true || chatModel?.isChannel == true) stringResource(R.string.menu_leave) else stringResource(
-                                    R.string.menu_delete_chat
-                                ),
-                                textColor = MaterialTheme.colorScheme.error,
-                                iconTint = MaterialTheme.colorScheme.error,
-                                onClick = {
-                                    showMenu = false
-                                    onDelete()
-                                }
-                            )
+                            if (canDelete) {
+                                MenuOptionRow(
+                                    icon = Icons.Rounded.Delete,
+                                    title = if (chatModel?.isGroup == true || chatModel?.isChannel == true) stringResource(
+                                        R.string.menu_leave
+                                    ) else stringResource(
+                                        R.string.menu_delete_chat
+                                    ),
+                                    textColor = MaterialTheme.colorScheme.error,
+                                    iconTint = MaterialTheme.colorScheme.error,
+                                    onClick = {
+                                        showMenu = false
+                                        onDelete()
+                                    }
+                                )
+                            }
                         }
                     }
                 }

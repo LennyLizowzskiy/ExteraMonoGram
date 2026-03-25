@@ -755,16 +755,24 @@ class DefaultProfileComponent(
     override fun onShowStatistics() {
         scope.launch {
             val stats = userRepository.getChatStatistics(chatId, false)
-            val enrichedStats = stats?.let { enrichInteractionPreviews(it) }
-            _state.update { it.copy(statistics = enrichedStats, isStatisticsVisible = true) }
+            if (stats != null) {
+                val enrichedStats = enrichInteractionPreviews(stats)
+                _state.update { it.copy(statistics = enrichedStats, isStatisticsVisible = true) }
+            } else {
+                loadData()
+            }
         }
     }
 
     override fun onShowRevenueStatistics() {
         scope.launch {
             val stats = userRepository.getChatRevenueStatistics(chatId, false)
-            _state.update {
-                it.copy(revenueStatistics = stats, isRevenueStatisticsVisible = true)
+            if (stats != null) {
+                _state.update {
+                    it.copy(revenueStatistics = stats, isRevenueStatisticsVisible = true)
+                }
+            } else {
+                loadData()
             }
         }
     }

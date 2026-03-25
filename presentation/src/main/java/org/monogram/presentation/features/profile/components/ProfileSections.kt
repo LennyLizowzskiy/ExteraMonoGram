@@ -1,7 +1,6 @@
 package org.monogram.presentation.features.profile.components
 
 import androidx.compose.animation.*
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -13,12 +12,11 @@ import androidx.compose.material.icons.automirrored.rounded.Login
 import androidx.compose.material.icons.automirrored.rounded.Logout
 import androidx.compose.material.icons.automirrored.rounded.VolumeOff
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,17 +33,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.monogram.domain.models.UserTypeEnum
 import org.monogram.presentation.R
-import org.monogram.presentation.core.ui.StyledQRCode
-import org.monogram.presentation.core.ui.generatePureBitmap
-import org.monogram.presentation.core.ui.saveBitmapToGallery
-import org.monogram.presentation.core.ui.shareBitmap
+import org.monogram.presentation.core.ui.*
 import org.monogram.presentation.core.util.CountryManager
 import org.monogram.presentation.core.util.OperatorManager
 import org.monogram.presentation.features.chats.currentChat.components.VideoPlayerPool
 import org.monogram.presentation.features.profile.ProfileComponent
-import org.monogram.presentation.core.ui.ItemPosition
-import org.monogram.presentation.core.ui.SettingsSwitchTile
-import org.monogram.presentation.core.ui.SettingsTile
 import java.util.*
 
 @Composable
@@ -82,18 +74,20 @@ fun ProfileInfoSection(
         else -> false
     }
 
-    ProfileQuickActions(
-        state = state,
-        isGroupOrChannel = isGroupOrChannel,
-        isCurrentUser = isCurrentUser,
-        onSendMessage = onSendMessage,
-        onToggleMute = onToggleMute,
-        onLeave = onLeave,
-        onJoin = onJoin,
-        onReport = onReport,
-        onShowQRCode = onShowQRCode,
-        onEdit = onEdit
-    )
+    if (!isCurrentUser) {
+        ProfileQuickActions(
+            state = state,
+            isGroupOrChannel = isGroupOrChannel,
+            isCurrentUser = isCurrentUser,
+            onSendMessage = onSendMessage,
+            onToggleMute = onToggleMute,
+            onLeave = onLeave,
+            onJoin = onJoin,
+            onReport = onReport,
+            onShowQRCode = onShowQRCode,
+            onEdit = onEdit
+        )
+    }
 
     state.linkedChat?.let { linkedChat ->
         LinkedChatItem(
@@ -106,7 +100,7 @@ fun ProfileInfoSection(
 
     val items = mutableListOf<@Composable (ItemPosition) -> Unit>()
 
-    if (!isGroupOrChannel && (state.personalAvatarPath != null || chat?.personalAvatarPath != null)) {
+    if (!isCurrentUser && !isGroupOrChannel && (state.personalAvatarPath != null || chat?.personalAvatarPath != null)) {
         items.add { pos ->
             SettingsTile(
                 icon = Icons.Rounded.Portrait,
@@ -337,7 +331,8 @@ fun ProfileInfoSection(
         }
     }
 
-    if (fullInfo?.canGetStatistics == true) {
+    val hasStatisticsAccess = isGroupOrChannel && fullInfo?.canGetStatistics == true
+    if (hasStatisticsAccess) {
         items.add { pos ->
             SettingsTile(
                 icon = Icons.Rounded.BarChart,
@@ -350,7 +345,110 @@ fun ProfileInfoSection(
         }
     }
 
-    if (fullInfo?.canGetRevenueStatistics == true) {
+    if (!isGroupOrChannel && !isCurrentUser && user != null && user.type != UserTypeEnum.BOT && user.isMutualContact) {
+        val savedByYou = user.isContact
+        items.add { pos ->
+            SettingsTile(
+                icon = Icons.Rounded.PersonAdd,
+                title = stringResource(R.string.contact_added_you_yes),
+                subtitle = if (savedByYou) {
+                    stringResource(R.string.contact_saved_by_you)
+                } else {
+                    stringResource(R.string.contact_not_saved_by_you)
+                },
+                iconColor = Color(0xFF5C6BC0),
+                position = pos,
+                onClick = { }
+            )
+        }
+    }
+
+    if (!isGroupOrChannel && isCurrentUser && fullInfo != null) {
+        if (fullInfo.hasPostedToProfileStories) {
+            items.add { pos ->
+                SettingsTile(
+                    icon = Icons.Rounded.Collections,
+                    title = stringResource(R.string.profile_feature_stories_title),
+                    subtitle = stringResource(R.string.profile_feature_stories_subtitle),
+                    iconColor = Color(0xFFAB47BC),
+                    position = pos,
+                    onClick = { }
+                )
+            }
+        }
+
+        if (fullInfo.setChatBackground) {
+            items.add { pos ->
+                SettingsTile(
+                    icon = Icons.Rounded.Palette,
+                    title = stringResource(R.string.profile_feature_background_title),
+                    subtitle = stringResource(R.string.profile_feature_background_subtitle),
+                    iconColor = Color(0xFF26A69A),
+                    position = pos,
+                    onClick = { }
+                )
+            }
+        }
+
+        if (fullInfo.hasRestrictedVoiceAndVideoNoteMessages) {
+            items.add { pos ->
+                SettingsTile(
+                    icon = Icons.Rounded.MicOff,
+                    title = stringResource(R.string.profile_feature_voice_restricted_title),
+                    subtitle = stringResource(R.string.profile_feature_voice_restricted_subtitle),
+                    iconColor = Color(0xFFFF7043),
+                    position = pos,
+                    onClick = { }
+                )
+            }
+        }
+    }
+
+    if (isGroupOrChannel && (fullInfo?.slowModeDelay ?: 0) > 0) {
+        items.add { pos ->
+            SettingsTile(
+                icon = Icons.Rounded.Timer,
+                title = stringResource(R.string.slow_mode_title),
+                subtitle = stringResource(
+                    R.string.slow_mode_subtitle_format,
+                    formatInterval(fullInfo?.slowModeDelay ?: 0)
+                ),
+                iconColor = Color(0xFF009688),
+                position = pos,
+                onClick = { }
+            )
+        }
+    }
+
+    if (isGroupOrChannel && chat?.hasProtectedContent == true) {
+        items.add { pos ->
+            SettingsTile(
+                icon = Icons.Rounded.Shield,
+                title = stringResource(R.string.protected_content_title),
+                subtitle = stringResource(R.string.protected_content_subtitle),
+                iconColor = Color(0xFF7E57C2),
+                position = pos,
+                onClick = { }
+            )
+        }
+    }
+
+    if (!isGroupOrChannel && fullInfo?.hasPrivateForwards == true) {
+        items.add { pos ->
+            SettingsTile(
+                icon = Icons.Rounded.ForwardToInbox,
+                title = stringResource(R.string.private_forwards_title),
+                subtitle = stringResource(R.string.private_forwards_subtitle),
+                iconColor = Color(0xFF5E35B1),
+                position = pos,
+                onClick = { }
+            )
+        }
+    }
+
+    val hasRevenueAccess = chat?.isChannel == true && fullInfo?.canGetRevenueStatistics == true
+
+    if (hasRevenueAccess) {
         items.add { pos ->
             SettingsTile(
                 icon = Icons.Rounded.Payments,
@@ -360,34 +458,6 @@ fun ProfileInfoSection(
                 position = pos,
                 onClick = { onShowRevenueStatistics() }
             )
-        }
-    }
-
-    if (fullInfo != null && isGroupOrChannel) {
-        val stats = listOfNotNull(
-            if (fullInfo.memberCount > 0) stringResource(R.string.members_count_format, fullInfo.memberCount) else null,
-            if (fullInfo.administratorCount > 0) stringResource(
-                R.string.admins_count_format,
-                fullInfo.administratorCount
-            ) else null,
-            if (fullInfo.restrictedCount > 0) stringResource(
-                R.string.restricted_count_format,
-                fullInfo.restrictedCount
-            ) else null,
-            if (fullInfo.bannedCount > 0) stringResource(R.string.banned_count_format, fullInfo.bannedCount) else null
-        ).joinToString(", ")
-
-        if (stats.isNotEmpty()) {
-            items.add { pos ->
-                SettingsTile(
-                    icon = Icons.Rounded.Groups,
-                    title = stats,
-                    subtitle = stringResource(R.string.chat_stats_subtitle),
-                    iconColor = MaterialTheme.colorScheme.primary,
-                    position = pos,
-                    onClick = { }
-                )
-            }
         }
     }
 
@@ -555,13 +625,15 @@ private fun ProfileQuickActions(
         
         if (!isCurrentUser) {
             val isContact = user?.isContact == true
-            items.add { mod ->
-                QuickActionItem(
-                    if (isContact) Icons.Default.Edit else Icons.Default.Add,
-                    if (isContact) stringResource(R.string.menu_edit) else stringResource(R.string.action_add),
-                    onClick = onEdit,
-                    modifier = mod
-                )
+            if (isContact) {
+                items.add { mod ->
+                    QuickActionItem(
+                        Icons.Default.Edit,
+                        stringResource(R.string.menu_edit),
+                        onClick = onEdit,
+                        modifier = mod
+                    )
+                }
             }
         }
     }
@@ -585,7 +657,9 @@ private fun ProfileQuickActions(
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
             ) {
                 items.forEach { item ->
-                    item(Modifier.weight(1f, fill = true).widthIn(max = 100.dp))
+                    item(Modifier
+                        .weight(1f, fill = true)
+                        .widthIn(max = 100.dp))
                 }
             }
         }
@@ -1127,5 +1201,15 @@ private fun UsernameChip(
             color = color,
             fontWeight = FontWeight.SemiBold
         )
+    }
+}
+
+private fun formatInterval(value: Int): String {
+    val seconds = value.coerceAtLeast(0)
+    return when {
+        seconds >= 86400 -> "${seconds / 86400}d"
+        seconds >= 3600 -> "${seconds / 3600}h"
+        seconds >= 60 -> "${seconds / 60}m"
+        else -> "${seconds}s"
     }
 }
