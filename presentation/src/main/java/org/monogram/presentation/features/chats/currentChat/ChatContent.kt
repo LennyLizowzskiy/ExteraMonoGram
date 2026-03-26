@@ -93,8 +93,16 @@ fun ChatContent(
 
     // Menu States
     var selectedMessageId by remember { mutableStateOf<Long?>(null) }
-    val selectedMessage = remember(selectedMessageId, state.messages) {
-        state.messages.find { it.id == selectedMessageId }
+    val transformedMessageTexts = remember { mutableStateMapOf<Long, String>() }
+    val originalMessageTexts = remember { mutableStateMapOf<Long, String>() }
+    val displayMessages = remember(state.messages, transformedMessageTexts.toMap()) {
+        state.messages.map { message ->
+            val transformedText = transformedMessageTexts[message.id] ?: return@map message
+            message.withUpdatedTextContent(transformedText)
+        }
+    }
+    val selectedMessage = remember(selectedMessageId, displayMessages) {
+        displayMessages.find { it.id == selectedMessageId }
     }
     var menuOffset by remember { mutableStateOf(Offset.Zero) }
     var menuMessageSize by remember { mutableStateOf(IntSize.Zero) }
@@ -105,8 +113,8 @@ fun ChatContent(
     var editingPhotoPath by remember { mutableStateOf<String?>(null) }
     var editingVideoPath by remember { mutableStateOf<String?>(null) }
 
-    val groupedMessages = remember(state.messages) {
-        groupMessagesByAlbum(state.messages)
+    val groupedMessages = remember(displayMessages) {
+        groupMessagesByAlbum(displayMessages)
     }
     val isComments = state.rootMessage != null
     val isForumList = state.viewAsTopics && state.currentTopicId == null
@@ -151,6 +159,16 @@ fun ChatContent(
         isVisible = true
         if (state.fullScreenVideoPath != null || state.fullScreenVideoMessageId != null) {
             component.onDismissVideo()
+        }
+    }
+
+    LaunchedEffect(state.messages) {
+        val ids = state.messages.map { it.id }.toSet()
+        transformedMessageTexts.keys.toList().forEach { id ->
+            if (id !in ids) {
+                transformedMessageTexts.remove(id)
+                originalMessageTexts.remove(id)
+            }
         }
     }
 
@@ -914,6 +932,19 @@ fun ChatContent(
                     groupedMessages = groupedMessages,
                     downloadUtils = component.downloadUtils,
                     clipboardManager = clipboardManager,
+                    canRestoreOriginalText = originalMessageTexts.containsKey(msg.id),
+                    onApplyTransformedText = { newText ->
+                        val originalText = msg.extractTextContent()
+                        if (!originalText.isNullOrBlank() && !originalMessageTexts.containsKey(msg.id)) {
+                            originalMessageTexts[msg.id] = originalText
+                        }
+                        transformedMessageTexts[msg.id] = newText
+                    },
+                    onRestoreOriginalText = {
+                        val originalText = originalMessageTexts[msg.id] ?: return@ChatMessageOptionsMenu
+                        transformedMessageTexts[msg.id] = originalText
+                        originalMessageTexts.remove(msg.id)
+                    },
                     onDismiss = { selectedMessageId = null }
                 )
             }
@@ -993,6 +1024,31 @@ fun ChatContent(
             }
         }
     }
+}
+
+private fun MessageModel.extractTextContent(): String? {
+    return when (val c = content) {
+        is MessageContent.Text -> c.text
+        is MessageContent.Photo -> c.caption
+        is MessageContent.Video -> c.caption
+        is MessageContent.Gif -> c.caption
+        is MessageContent.Document -> c.caption
+        is MessageContent.Audio -> c.caption
+        else -> null
+    }
+}
+
+private fun MessageModel.withUpdatedTextContent(newText: String): MessageModel {
+    val updatedContent = when (val c = content) {
+        is MessageContent.Text -> c.copy(text = newText, entities = emptyList(), webPage = null)
+        is MessageContent.Photo -> c.copy(caption = newText, entities = emptyList())
+        is MessageContent.Video -> c.copy(caption = newText, entities = emptyList())
+        is MessageContent.Gif -> c.copy(caption = newText, entities = emptyList())
+        is MessageContent.Document -> c.copy(caption = newText, entities = emptyList())
+        is MessageContent.Audio -> c.copy(caption = newText, entities = emptyList())
+        else -> return this
+    }
+    return copy(content = updatedContent)
 }
 
 private suspend fun LazyListState.scrollMessageToCenter(

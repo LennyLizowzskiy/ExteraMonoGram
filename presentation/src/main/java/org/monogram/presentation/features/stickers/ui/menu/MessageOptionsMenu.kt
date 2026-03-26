@@ -72,6 +72,9 @@ fun MessageOptionsMenu(
     canBlock: Boolean = false,
     canRestrict: Boolean = false,
     canCopyLink: Boolean = true,
+    showTelegramSummary: Boolean = false,
+    showTelegramTranslator: Boolean = false,
+    showRestoreOriginalText: Boolean = false,
     viewers: List<MessageViewerModel> = emptyList(),
     isLoadingViewers: Boolean = false,
     onReloadViewers: () -> Unit = {},
@@ -90,6 +93,9 @@ fun MessageOptionsMenu(
     onSaveToDownloads: () -> Unit = {},
     onReaction: (String) -> Unit = {},
     onComments: () -> Unit = {},
+    onTelegramSummary: () -> Unit = {},
+    onTelegramTranslator: () -> Unit = {},
+    onRestoreOriginalText: () -> Unit = {},
     onReport: () -> Unit = {},
     onBlock: () -> Unit = {},
     onRestrict: () -> Unit = {},
@@ -226,6 +232,7 @@ fun MessageOptionsMenu(
 
     var showDeleteSheet by remember { mutableStateOf(false) }
     var menuPage by remember { mutableStateOf(MenuPage.Main) }
+    val hasCocoonActions = showTelegramSummary || showTelegramTranslator || showRestoreOriginalText
 
     if (showDeleteSheet) {
         DeleteMessagesSheet(
@@ -518,6 +525,18 @@ fun MessageOptionsMenu(
                             onClick = { animateOutAndDismiss(onSelect) }
                         )
 
+                        if (hasCocoonActions) {
+                            InternalMenuOptionItem(
+                                icon = Icons.Rounded.AutoAwesome,
+                                text = stringResource(R.string.menu_cocoon),
+                                trailingIcon = Icons.Rounded.ChevronRight,
+                                onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    menuPage = MenuPage.Cocoon
+                                }
+                            )
+                        }
+
                         InternalMenuOptionItem(
                             icon = Icons.Rounded.MoreHoriz,
                             text = stringResource(R.string.menu_more),
@@ -611,6 +630,49 @@ fun MessageOptionsMenu(
                                 )
                             }
                         }
+                    } else if (page == MenuPage.Cocoon) {
+                        InternalMenuOptionItem(
+                            icon = Icons.AutoMirrored.Rounded.ArrowBack,
+                            text = stringResource(R.string.cd_back),
+                            iconTint = MaterialTheme.colorScheme.primary,
+                            textColor = MaterialTheme.colorScheme.primary,
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                if (hasReactionsInMessage) {
+                                    suppressNextReactionsAppearanceAnimation = true
+                                }
+                                menuPage = MenuPage.Main
+                            }
+                        )
+
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                        )
+
+                        if (showTelegramSummary) {
+                            InternalMenuOptionItem(
+                                icon = Icons.Rounded.AutoAwesome,
+                                text = stringResource(R.string.menu_telegram_summary),
+                                onClick = { animateOutAndDismiss(onTelegramSummary) }
+                            )
+                        }
+
+                        if (showTelegramTranslator) {
+                            InternalMenuOptionItem(
+                                icon = Icons.Rounded.Translate,
+                                text = stringResource(R.string.menu_telegram_translate),
+                                onClick = { animateOutAndDismiss(onTelegramTranslator) }
+                            )
+                        }
+
+                        if (showRestoreOriginalText) {
+                            InternalMenuOptionItem(
+                                icon = Icons.Rounded.Undo,
+                                text = stringResource(R.string.menu_restore_original_text),
+                                onClick = { animateOutAndDismiss(onRestoreOriginalText) }
+                            )
+                        }
                     } else {
                         InternalMenuOptionItem(
                             icon = Icons.AutoMirrored.Rounded.ArrowBack,
@@ -687,6 +749,7 @@ fun MessageOptionsMenu(
 private enum class MenuPage {
     Main,
     More,
+    Cocoon,
     Viewers
 }
 
