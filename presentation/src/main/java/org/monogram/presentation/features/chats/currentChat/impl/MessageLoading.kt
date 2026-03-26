@@ -140,10 +140,6 @@ internal suspend fun DefaultChatComponent.loadComments(threadId: Long) {
         )
     }
     updateMessages(messages, replace = true)
-
-    if (!reachedEnd) {
-        loadNewerMessages()
-    }
 }
 
 private suspend fun DefaultChatComponent.loadBottomMessages(threadId: Long?) {

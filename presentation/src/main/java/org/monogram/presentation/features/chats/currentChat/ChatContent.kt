@@ -166,7 +166,7 @@ fun ChatContent(
         val isActuallyLoading = if (state.viewAsTopics && state.currentTopicId == null) {
             state.isLoadingTopics && state.topics.isEmpty()
         } else if (state.currentTopicId != null) {
-            state.isLoading && state.rootMessage == null
+            state.isLoading && state.messages.isEmpty() && state.rootMessage == null
         } else {
             state.isLoading && state.messages.isEmpty()
         }
@@ -315,11 +315,18 @@ fun ChatContent(
     // Auto-scroll to bottom when new messages arrive and we are already at the bottom
     val messageCount = groupedMessages.size
     LaunchedEffect(messageCount, state.isLatestLoaded) {
+        if (isComments) return@LaunchedEffect
+
         val isAtBottomNow = scrollState.isAtBottom(
             isComments = isComments,
             isLatestLoaded = state.isLatestLoaded
         )
-        if ((state.isAtBottom || isAtBottomNow) && !state.isLoading && !scrollState.isScrollInProgress) {
+        if ((state.isAtBottom || isAtBottomNow) &&
+            !state.isLoading &&
+            !state.isLoadingOlder &&
+            !state.isLoadingNewer &&
+            !scrollState.isScrollInProgress
+        ) {
             scrollState.scrollToChatBottom(
                 isComments = isComments,
                 animated = state.isChatAnimationsEnabled
@@ -637,7 +644,7 @@ fun ChatContent(
                                     translationY = contentOffset.toPx()
                                 }
                         ) {
-                            if (!showInitialLoading || state.currentTopicId != null) {
+                            if (!showInitialLoading) {
                                 ChatContentList(
                                     showNavPadding = false,
                                     state = state,
@@ -823,7 +830,7 @@ fun ChatContent(
                             }
 
                             AnimatedVisibility(
-                                visible = showInitialLoading && state.currentTopicId == null,
+                                visible = showInitialLoading,
                                 enter = fadeIn(),
                                 exit = fadeOut()
                             ) {
