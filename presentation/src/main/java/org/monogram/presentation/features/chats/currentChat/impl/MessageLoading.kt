@@ -145,6 +145,20 @@ internal suspend fun DefaultChatComponent.loadComments(threadId: Long) {
 private suspend fun DefaultChatComponent.loadBottomMessages(threadId: Long?) {
     lastLoadedOlderId = 0L
     lastLoadedNewerId = 0L
+
+    val cachedMessages = repositoryMessage.getCachedMessages(chatId, PAGE_SIZE)
+    if (cachedMessages.isNotEmpty()) {
+        _state.update {
+            it.copy(
+                isAtBottom = true,
+                isLatestLoaded = false,
+                isOldestLoaded = false,
+                scrollToMessageId = null
+            )
+        }
+        updateMessages(cachedMessages, replace = true)
+    }
+
     val messages = repositoryMessage.getMessagesOlder(chatId, 0, PAGE_SIZE, threadId)
     val isOldestLoaded = messages.size < PAGE_SIZE
     _state.update {

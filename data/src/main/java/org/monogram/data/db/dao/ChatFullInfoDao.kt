@@ -14,6 +14,9 @@ interface ChatFullInfoDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertChatFullInfo(info: ChatFullInfoEntity)
 
+    @Query("SELECT * FROM chat_full_info WHERE chatId IN (:chatIds)")
+    suspend fun getChatFullInfos(chatIds: List<Long>): List<ChatFullInfoEntity>
+
     @Query("DELETE FROM chat_full_info WHERE chatId = :chatId")
     suspend fun deleteChatFullInfo(chatId: Long)
 

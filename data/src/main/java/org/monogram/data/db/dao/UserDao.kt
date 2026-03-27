@@ -17,6 +17,9 @@ interface UserDao {
     @Query("SELECT * FROM users")
     suspend fun getAllUsers(): List<UserEntity>
 
+    @Query("SELECT * FROM users WHERE id IN (:userIds)")
+    suspend fun getUsersByIds(userIds: List<Long>): List<UserEntity>
+
     @Query("DELETE FROM users WHERE id = :userId")
     suspend fun deleteUser(userId: Long)
 

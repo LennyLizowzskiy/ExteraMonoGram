@@ -522,7 +522,9 @@ class ChatsListRepositoryImpl(
                 old.permissionCanChangeInfo != new.permissionCanChangeInfo ||
                 old.permissionCanInviteUsers != new.permissionCanInviteUsers ||
                 old.permissionCanPinMessages != new.permissionCanPinMessages ||
-                old.permissionCanCreateTopics != new.permissionCanCreateTopics
+                old.permissionCanCreateTopics != new.permissionCanCreateTopics ||
+                old.lastMessageContentType != new.lastMessageContentType ||
+                old.lastMessageSenderName != new.lastMessageSenderName
     }
 
     private fun resolvePersistPosition(chat: TdApi.Chat): TdApi.ChatPosition? {

@@ -1261,21 +1261,356 @@ class MessageMapper(
         )
     }
 
-    fun mapToEntity(msg: TdApi.Message): org.monogram.data.db.model.MessageEntity {
+    data class CachedMessageContent(
+        val type: String,
+        val text: String,
+        val meta: String?
+    )
+
+    fun mapToEntity(
+        msg: TdApi.Message,
+        getSenderName: ((Long) -> String?)? = null
+    ): org.monogram.data.db.model.MessageEntity {
+        val senderId = when (val sender = msg.senderId) {
+            is TdApi.MessageSenderUser -> sender.userId
+            is TdApi.MessageSenderChat -> sender.chatId
+            else -> 0L
+        }
+        val senderName = getSenderName?.invoke(senderId).orEmpty()
+        val content = extractCachedContent(msg.content)
+        val entitiesEncoded = encodeEntities(msg.content)
+        val replyToMessageId = (msg.replyTo as? TdApi.MessageReplyToMessage)?.messageId ?: 0L
+        val replyToPreview = buildReplyPreview(msg)
+        val forwardFromName = msg.forwardInfo?.origin?.let { extractForwardOriginName(it) }
+
         return org.monogram.data.db.model.MessageEntity(
             id = msg.id,
             chatId = msg.chatId,
-            senderId = when (val sender = msg.senderId) {
-                is TdApi.MessageSenderUser -> sender.userId
-                is TdApi.MessageSenderChat -> sender.chatId
-                else -> 0L
-            },
-            content = (msg.content as? TdApi.MessageText)?.text?.text ?: "",
+            senderId = senderId,
+            senderName = senderName,
+            content = content.text,
+            contentType = content.type,
+            contentMeta = content.meta,
             date = resolveMessageDate(msg),
             isOutgoing = msg.isOutgoing,
             isRead = false,
+            replyToMessageId = replyToMessageId,
+            replyToPreview = replyToPreview,
+            forwardFromName = forwardFromName,
+            editDate = msg.editDate,
+            mediaAlbumId = msg.mediaAlbumId,
+            entities = entitiesEncoded,
+            viewCount = msg.interactionInfo?.viewCount ?: 0,
+            forwardCount = msg.interactionInfo?.forwardCount ?: 0,
             createdAt = System.currentTimeMillis()
         )
+    }
+
+    fun extractCachedContent(content: TdApi.MessageContent): CachedMessageContent {
+        return when (content) {
+            is TdApi.MessageText -> CachedMessageContent("text", content.text.text, null)
+            is TdApi.MessagePhoto -> {
+                val best = content.photo.sizes.lastOrNull()
+                CachedMessageContent(
+                    "photo",
+                    content.caption?.text.orEmpty(),
+                    listOf(
+                        best?.width ?: 0,
+                        best?.height ?: 0,
+                        best?.photo?.id ?: 0,
+                        best?.photo?.local?.path.orEmpty()
+                    ).joinToString("|")
+                )
+            }
+
+            is TdApi.MessageVideo -> CachedMessageContent(
+                "video",
+                content.caption?.text.orEmpty(),
+                listOf(
+                    content.video.width,
+                    content.video.height,
+                    content.video.duration,
+                    content.video.video.id,
+                    content.video.thumbnail?.file?.local?.path.orEmpty(),
+                    if (content.video.supportsStreaming) 1 else 0
+                ).joinToString("|")
+            )
+
+            is TdApi.MessageVoiceNote -> CachedMessageContent(
+                "voice",
+                content.caption?.text.orEmpty(),
+                "${content.voiceNote.duration}|${content.voiceNote.voice.id}"
+            )
+
+            is TdApi.MessageVideoNote -> CachedMessageContent(
+                "video_note",
+                "",
+                "${content.videoNote.duration}|${content.videoNote.length}|${content.videoNote.video.id}|${content.videoNote.thumbnail?.file?.local?.path.orEmpty()}"
+            )
+
+            is TdApi.MessageSticker -> {
+                val format = when (content.sticker.format) {
+                    is TdApi.StickerFormatWebp -> "webp"
+                    is TdApi.StickerFormatTgs -> "tgs"
+                    is TdApi.StickerFormatWebm -> "webm"
+                    else -> "unknown"
+                }
+                CachedMessageContent(
+                    "sticker",
+                    content.sticker.emoji,
+                    "${content.sticker.setId}|${content.sticker.emoji}|${content.sticker.width}|${content.sticker.height}|${content.sticker.sticker.id}|$format"
+                )
+            }
+
+            is TdApi.MessageDocument -> CachedMessageContent(
+                "document",
+                content.caption?.text.orEmpty(),
+                "${content.document.fileName}|${content.document.mimeType}|${content.document.document.size}|${content.document.document.id}"
+            )
+
+            is TdApi.MessageAudio -> CachedMessageContent(
+                "audio",
+                content.caption?.text.orEmpty(),
+                "${content.audio.duration}|${content.audio.title.orEmpty()}|${content.audio.performer.orEmpty()}|${content.audio.fileName.orEmpty()}|${content.audio.audio.id}"
+            )
+
+            is TdApi.MessageAnimation -> CachedMessageContent(
+                "gif",
+                content.caption?.text.orEmpty(),
+                "${content.animation.width}|${content.animation.height}|${content.animation.duration}|${content.animation.animation.id}|${content.animation.thumbnail?.file?.local?.path.orEmpty()}"
+            )
+
+            is TdApi.MessagePoll -> CachedMessageContent(
+                "poll",
+                content.poll.question.text,
+                "${content.poll.options.size}|${if (content.poll.isClosed) 1 else 0}"
+            )
+
+            is TdApi.MessageContact -> CachedMessageContent(
+                "contact",
+                listOf(content.contact.firstName, content.contact.lastName).filter { it.isNotBlank() }
+                    .joinToString(" "),
+                "${content.contact.phoneNumber}|${content.contact.firstName}|${content.contact.lastName}|${content.contact.userId}"
+            )
+
+            is TdApi.MessageLocation -> CachedMessageContent(
+                "location",
+                "",
+                "${content.location.latitude}|${content.location.longitude}|${content.livePeriod}"
+            )
+
+            is TdApi.MessageCall -> CachedMessageContent("service", "Call (${content.duration}s)", null)
+            is TdApi.MessagePinMessage -> CachedMessageContent("service", "Pinned a message", null)
+            is TdApi.MessageChatAddMembers -> CachedMessageContent("service", "Added members", null)
+            is TdApi.MessageChatDeleteMember -> CachedMessageContent("service", "Removed a member", null)
+            is TdApi.MessageChatChangeTitle -> CachedMessageContent("service", "Changed title", null)
+            is TdApi.MessageAnimatedEmoji -> CachedMessageContent("text", content.emoji, null)
+            is TdApi.MessageDice -> CachedMessageContent("text", content.emoji, null)
+            else -> CachedMessageContent("unsupported", "", null)
+        }
+    }
+
+    fun mapEntityToModel(entity: org.monogram.data.db.model.MessageEntity): MessageModel {
+        val meta = entity.contentMeta?.split('|') ?: emptyList()
+        val content: MessageContent = when (entity.contentType) {
+            "text" -> MessageContent.Text(entity.content)
+            "photo" -> MessageContent.Photo(
+                path = meta.getOrNull(3)?.takeIf { it.isNotEmpty() },
+                width = meta.getOrNull(0)?.toIntOrNull() ?: 0,
+                height = meta.getOrNull(1)?.toIntOrNull() ?: 0,
+                caption = entity.content,
+                fileId = meta.getOrNull(2)?.toIntOrNull() ?: 0
+            )
+
+            "video" -> MessageContent.Video(
+                path = null,
+                width = meta.getOrNull(0)?.toIntOrNull() ?: 0,
+                height = meta.getOrNull(1)?.toIntOrNull() ?: 0,
+                duration = meta.getOrNull(2)?.toIntOrNull() ?: 0,
+                caption = entity.content,
+                fileId = meta.getOrNull(3)?.toIntOrNull() ?: 0,
+                supportsStreaming = (meta.getOrNull(5)?.toIntOrNull() ?: 0) == 1
+            )
+
+            "voice" -> MessageContent.Voice(
+                path = null,
+                duration = meta.getOrNull(0)?.toIntOrNull() ?: 0,
+                fileId = meta.getOrNull(1)?.toIntOrNull() ?: 0
+            )
+
+            "video_note" -> MessageContent.VideoNote(
+                path = null,
+                thumbnail = meta.getOrNull(3),
+                duration = meta.getOrNull(0)?.toIntOrNull() ?: 0,
+                length = meta.getOrNull(1)?.toIntOrNull() ?: 0,
+                fileId = meta.getOrNull(2)?.toIntOrNull() ?: 0
+            )
+
+            "sticker" -> MessageContent.Sticker(
+                id = 0L,
+                setId = meta.getOrNull(0)?.toLongOrNull() ?: 0L,
+                path = null,
+                width = meta.getOrNull(2)?.toIntOrNull() ?: 0,
+                height = meta.getOrNull(3)?.toIntOrNull() ?: 0,
+                emoji = entity.content,
+                fileId = meta.getOrNull(4)?.toIntOrNull() ?: 0
+            )
+
+            "document" -> MessageContent.Document(
+                path = null,
+                fileName = meta.getOrNull(0).orEmpty(),
+                mimeType = meta.getOrNull(1).orEmpty(),
+                size = meta.getOrNull(2)?.toLongOrNull() ?: 0L,
+                caption = entity.content,
+                fileId = meta.getOrNull(3)?.toIntOrNull() ?: 0
+            )
+
+            "audio" -> MessageContent.Audio(
+                path = null,
+                duration = meta.getOrNull(0)?.toIntOrNull() ?: 0,
+                title = meta.getOrNull(1).orEmpty(),
+                performer = meta.getOrNull(2).orEmpty(),
+                fileName = meta.getOrNull(3).orEmpty(),
+                mimeType = "",
+                size = 0L,
+                caption = entity.content,
+                fileId = meta.getOrNull(4)?.toIntOrNull() ?: 0
+            )
+
+            "gif" -> MessageContent.Gif(
+                path = null,
+                width = meta.getOrNull(0)?.toIntOrNull() ?: 0,
+                height = meta.getOrNull(1)?.toIntOrNull() ?: 0,
+                caption = entity.content,
+                fileId = meta.getOrNull(3)?.toIntOrNull() ?: 0
+            )
+
+            "poll" -> MessageContent.Poll(
+                id = 0L,
+                question = entity.content,
+                options = emptyList(),
+                totalVoterCount = 0,
+                isClosed = (meta.getOrNull(1)?.toIntOrNull() ?: 0) == 1,
+                isAnonymous = true,
+                type = PollType.Regular(false),
+                openPeriod = 0,
+                closeDate = 0
+            )
+
+            "contact" -> MessageContent.Contact(
+                phoneNumber = meta.getOrNull(0).orEmpty(),
+                firstName = meta.getOrNull(1).orEmpty(),
+                lastName = meta.getOrNull(2).orEmpty(),
+                vcard = "",
+                userId = meta.getOrNull(3)?.toLongOrNull() ?: 0L
+            )
+
+            "location" -> MessageContent.Location(
+                latitude = meta.getOrNull(0)?.toDoubleOrNull() ?: 0.0,
+                longitude = meta.getOrNull(1)?.toDoubleOrNull() ?: 0.0,
+                livePeriod = meta.getOrNull(2)?.toIntOrNull() ?: 0
+            )
+
+            "service" -> MessageContent.Service(entity.content)
+            else -> MessageContent.Text(entity.content)
+        }
+
+        return MessageModel(
+            id = entity.id,
+            date = entity.date,
+            isOutgoing = entity.isOutgoing,
+            senderName = entity.senderName,
+            chatId = entity.chatId,
+            content = content,
+            senderId = entity.senderId,
+            isRead = entity.isRead,
+            replyToMsgId = entity.replyToMessageId.takeIf { it != 0L },
+            forwardInfo = entity.forwardFromName?.let {
+                ForwardInfo(
+                    date = entity.date,
+                    fromId = 0L,
+                    fromName = it
+                )
+            },
+            mediaAlbumId = entity.mediaAlbumId,
+            editDate = entity.editDate,
+            views = entity.viewCount,
+            viewCount = entity.viewCount
+        )
+    }
+
+    private fun buildReplyPreview(msg: TdApi.Message): String? {
+        val reply = msg.replyTo as? TdApi.MessageReplyToMessage ?: return null
+        val replied = cache.getMessage(msg.chatId, reply.messageId) ?: return null
+        val replySenderName = when (val sender = replied.senderId) {
+            is TdApi.MessageSenderUser -> {
+                val user = cache.getUser(sender.userId)
+                listOfNotNull(user?.firstName?.takeIf { it.isNotBlank() }, user?.lastName?.takeIf { it.isNotBlank() })
+                    .joinToString(" ")
+            }
+
+            is TdApi.MessageSenderChat -> cache.getChat(sender.chatId)?.title.orEmpty()
+            else -> ""
+        }
+        val extracted = extractCachedContent(replied.content)
+        return "$replySenderName|${extracted.type}|${extracted.text.take(100)}"
+    }
+
+    private fun extractForwardOriginName(origin: TdApi.MessageOrigin): String {
+        return when (origin) {
+            is TdApi.MessageOriginUser -> {
+                val user = cache.getUser(origin.senderUserId)
+                listOfNotNull(user?.firstName?.takeIf { it.isNotBlank() }, user?.lastName?.takeIf { it.isNotBlank() })
+                    .joinToString(" ")
+                    .ifBlank { "User" }
+            }
+
+            is TdApi.MessageOriginChat -> cache.getChat(origin.senderChatId)?.title ?: "Chat"
+            is TdApi.MessageOriginChannel -> cache.getChat(origin.chatId)?.title ?: "Channel"
+            is TdApi.MessageOriginHiddenUser -> origin.senderName
+            else -> "Unknown"
+        }
+    }
+
+    private fun encodeEntities(content: TdApi.MessageContent): String? {
+        val formatted = when (content) {
+            is TdApi.MessageText -> content.text
+            is TdApi.MessagePhoto -> content.caption
+            is TdApi.MessageVideo -> content.caption
+            is TdApi.MessageDocument -> content.caption
+            is TdApi.MessageAudio -> content.caption
+            is TdApi.MessageAnimation -> content.caption
+            is TdApi.MessageVoiceNote -> content.caption
+            else -> null
+        } ?: return null
+
+        if (formatted.entities.isNullOrEmpty()) return null
+
+        return buildString {
+            formatted.entities.forEachIndexed { index, entity ->
+                if (index > 0) append('|')
+                append(entity.offset).append(',').append(entity.length).append(',')
+                when (val type = entity.type) {
+                    is TdApi.TextEntityTypeBold -> append("b")
+                    is TdApi.TextEntityTypeItalic -> append("i")
+                    is TdApi.TextEntityTypeUnderline -> append("u")
+                    is TdApi.TextEntityTypeStrikethrough -> append("s")
+                    is TdApi.TextEntityTypeSpoiler -> append("sp")
+                    is TdApi.TextEntityTypeCode -> append("c")
+                    is TdApi.TextEntityTypePre -> append("p")
+                    is TdApi.TextEntityTypeUrl -> append("url")
+                    is TdApi.TextEntityTypeTextUrl -> append("turl,").append(type.url)
+                    is TdApi.TextEntityTypeMention -> append("m")
+                    is TdApi.TextEntityTypeMentionName -> append("mn,").append(type.userId)
+                    is TdApi.TextEntityTypeHashtag -> append("h")
+                    is TdApi.TextEntityTypeBotCommand -> append("bc")
+                    is TdApi.TextEntityTypeCustomEmoji -> append("ce,").append(type.customEmojiId)
+                    is TdApi.TextEntityTypeEmailAddress -> append("em")
+                    is TdApi.TextEntityTypePhoneNumber -> append("ph")
+                    else -> append("?")
+                }
+            }
+        }
     }
 
     private fun resolveMessageDate(msg: TdApi.Message): Int {

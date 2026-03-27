@@ -280,7 +280,37 @@ class ChatCache : ChatsCacheDataSource, UserCacheDataSource {
                 }
             }
             lastMessage = TdApi.Message().apply {
-                content = TdApi.MessageText().apply { text = TdApi.FormattedText(entity.lastMessageText, emptyArray()) }
+                content = when (entity.lastMessageContentType) {
+                    "photo" -> TdApi.MessagePhoto().apply {
+                        photo = TdApi.Photo().apply { sizes = emptyArray(); minithumbnail = null; hasStickers = false }
+                        caption = TdApi.FormattedText(entity.lastMessageText, emptyArray())
+                        isSecret = false
+                        showCaptionAboveMedia = false
+                        selfDestructType = null
+                    }
+
+                    "video" -> TdApi.MessageVideo().apply {
+                        video = TdApi.Video()
+                        caption = TdApi.FormattedText(entity.lastMessageText, emptyArray())
+                        showCaptionAboveMedia = false
+                        isSecret = false
+                        selfDestructType = null
+                    }
+
+                    "voice" -> TdApi.MessageVoiceNote().apply {
+                        voiceNote = TdApi.VoiceNote()
+                        caption = TdApi.FormattedText(entity.lastMessageText, emptyArray())
+                        isListened = false
+                    }
+
+                    "sticker" -> TdApi.MessageSticker().apply {
+                        sticker = TdApi.Sticker()
+                        isPremium = false
+                    }
+
+                    else -> TdApi.MessageText()
+                        .apply { text = TdApi.FormattedText(entity.lastMessageText, emptyArray()) }
+                }
                 date = entity.lastMessageTime.toIntOrNull() ?: 0
                 id = entity.lastMessageId
                 isOutgoing = entity.isLastMessageOutgoing

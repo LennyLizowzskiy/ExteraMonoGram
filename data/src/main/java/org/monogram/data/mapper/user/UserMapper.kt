@@ -331,11 +331,32 @@ private fun ChatPermissionsModel.toApi(): TdApi.ChatPermissions {
 }
 
 fun TdApi.UserFullInfo.toEntity(userId: Long): UserFullInfoEntity {
+    val businessLocation = businessInfo?.location
+    val businessOpeningHours = businessInfo?.openingHours
+    val businessStartPage = businessInfo?.startPage
+    val birth = birthdate
+    val personalPhotoPath = personalPhoto?.animation?.file?.local?.path?.ifEmpty { null }
+        ?: personalPhoto?.sizes?.lastOrNull()?.photo?.local?.path?.ifEmpty { null }
+
     return UserFullInfoEntity(
         userId = userId,
         bio = bio?.text?.ifEmpty { null },
         commonGroupsCount = groupInCommonCount,
         giftCount = giftCount,
+        botInfoDescription = botInfo?.description?.ifEmpty { null },
+        personalChatId = personalChatId,
+        birthdateDay = birth?.day ?: 0,
+        birthdateMonth = birth?.month ?: 0,
+        birthdateYear = birth?.year ?: 0,
+        businessLocationAddress = businessLocation?.address?.ifEmpty { null },
+        businessLocationLatitude = businessLocation?.location?.latitude ?: 0.0,
+        businessLocationLongitude = businessLocation?.location?.longitude ?: 0.0,
+        businessOpeningHoursTimeZone = businessOpeningHours?.timeZoneId,
+        businessNextOpenIn = businessInfo?.nextOpenIn ?: 0,
+        businessNextCloseIn = businessInfo?.nextCloseIn ?: 0,
+        businessStartPageTitle = businessStartPage?.title?.ifEmpty { null },
+        businessStartPageMessage = businessStartPage?.message?.ifEmpty { null },
+        personalPhotoPath = personalPhotoPath,
         isBlocked = blockList != null,
         canBeCalled = canBeCalled,
         supportsVideoCalls = supportsVideoCalls,
@@ -428,10 +449,30 @@ fun UserEntity.toTdApi(): TdApi.User {
         lastName = this@toTdApi.lastName ?: ""
         phoneNumber = this@toTdApi.phoneNumber ?: ""
         isPremium = this@toTdApi.isPremium
+        isSupport = this@toTdApi.isSupport
+        isContact = this@toTdApi.isContact
+        isMutualContact = this@toTdApi.isMutualContact
+        isCloseFriend = this@toTdApi.isCloseFriend
+        haveAccess = this@toTdApi.haveAccess
+        languageCode = this@toTdApi.languageCode ?: ""
+        accentColorId = this@toTdApi.accentColorId
+        profileAccentColorId = this@toTdApi.profileAccentColorId
         verificationStatus = if (isVerified) TdApi.VerificationStatus(true, false, false, 0L) else null
-        usernames =
-            this@toTdApi.username?.let { TdApi.Usernames(arrayOf(it), emptyArray<String>(), it, emptyArray<String>()) }
-        status = TdApi.UserStatusOffline(lastSeen.toInt())
+        val (active, disabled, editable, collectible) = decodeUsernames(
+            this@toTdApi.usernamesData,
+            this@toTdApi.username
+        )
+        usernames = TdApi.Usernames(active, disabled, editable, collectible)
+        emojiStatus = this@toTdApi.statusEmojiId.takeIf { it != 0L }?.let {
+            TdApi.EmojiStatus(TdApi.EmojiStatusTypeCustomEmoji(it), 0)
+        }
+        status = when (this@toTdApi.statusType) {
+            "ONLINE" -> TdApi.UserStatusOnline(0)
+            "RECENTLY" -> TdApi.UserStatusRecently()
+            "LAST_WEEK" -> TdApi.UserStatusLastWeek()
+            "LAST_MONTH" -> TdApi.UserStatusLastMonth()
+            else -> TdApi.UserStatusOffline(lastSeen.toInt())
+        }
         profilePhoto = avatarPath?.let { path ->
             TdApi.ProfilePhoto().apply {
                 small = TdApi.File().apply { local = TdApi.LocalFile().apply { this.path = path } }
@@ -444,13 +485,94 @@ fun UserFullInfoEntity.toTdApi(): TdApi.UserFullInfo {
     return TdApi.UserFullInfo().apply {
         bio = this@toTdApi.bio?.let { TdApi.FormattedText(it, emptyArray()) }
         groupInCommonCount = commonGroupsCount
+        giftCount = this@toTdApi.giftCount
+        personalChatId = this@toTdApi.personalChatId
+        birthdate = if (birthdateDay > 0 && birthdateMonth > 0) {
+            TdApi.Birthdate(birthdateDay, birthdateMonth, birthdateYear)
+        } else {
+            null
+        }
+        botInfo = botInfoDescription?.let { text ->
+            TdApi.BotInfo().apply {
+                description = text
+                canGetRevenueStatistics = canGetRevenueStatistics
+            }
+        }
+        businessInfo = if (
+            businessLocationAddress != null ||
+            businessOpeningHoursTimeZone != null ||
+            businessStartPageTitle != null ||
+            businessStartPageMessage != null
+        ) {
+            TdApi.BusinessInfo().apply {
+                location = businessLocationAddress?.let { address ->
+                    TdApi.BusinessLocation(
+                        TdApi.Location(businessLocationLatitude, businessLocationLongitude, 0.0),
+                        address
+                    )
+                }
+                openingHours = businessOpeningHoursTimeZone?.let { tz ->
+                    TdApi.BusinessOpeningHours(tz, emptyArray())
+                }
+                startPage = if (businessStartPageTitle != null || businessStartPageMessage != null) {
+                    TdApi.BusinessStartPage(
+                        businessStartPageTitle.orEmpty(),
+                        businessStartPageMessage.orEmpty(),
+                        null
+                    )
+                } else {
+                    null
+                }
+                nextOpenIn = businessNextOpenIn
+                nextCloseIn = businessNextCloseIn
+            }
+        } else {
+            null
+        }
+        personalPhoto = personalPhotoPath?.let { path ->
+            TdApi.ChatPhoto().apply {
+                sizes = arrayOf(
+                    TdApi.PhotoSize().apply {
+                        type = "x"
+                        width = 0
+                        height = 0
+                        photo = TdApi.File().apply { local = TdApi.LocalFile().apply { this.path = path } }
+                    }
+                )
+            }
+        }
         blockList = if (isBlocked) TdApi.BlockListMain() else null
         canBeCalled = this@toTdApi.canBeCalled
         supportsVideoCalls = this@toTdApi.supportsVideoCalls
         hasPrivateCalls = this@toTdApi.hasPrivateCalls
         hasPrivateForwards = this@toTdApi.hasPrivateForwards
+        hasRestrictedVoiceAndVideoNoteMessages = this@toTdApi.hasRestrictedVoiceAndVideoNoteMessages
+        hasPostedToProfileStories = this@toTdApi.hasPostedToProfileStories
+        setChatBackground = this@toTdApi.setChatBackground
+        incomingPaidMessageStarCount = this@toTdApi.incomingPaidMessageStarCount
+        outgoingPaidMessageStarCount = this@toTdApi.outgoingPaidMessageStarCount
     }
 }
+
+private fun decodeUsernames(data: String?, fallbackUsername: String?): QuadUsernames {
+    if (data.isNullOrEmpty()) {
+        val active = fallbackUsername?.takeIf { it.isNotBlank() }?.let { arrayOf(it) } ?: emptyArray()
+        return QuadUsernames(active, emptyArray(), fallbackUsername.orEmpty(), emptyArray())
+    }
+    val parts = data.split("\n", limit = 4)
+    val active = parts.getOrNull(0).orEmpty().split('|').filter { it.isNotBlank() }.toTypedArray()
+    val disabled = parts.getOrNull(1).orEmpty().split('|').filter { it.isNotBlank() }.toTypedArray()
+    val editable = parts.getOrNull(2).orEmpty()
+    val collectible = parts.getOrNull(3).orEmpty().split('|').filter { it.isNotBlank() }.toTypedArray()
+    return QuadUsernames(active, disabled, editable, collectible)
+}
+
+private data class QuadUsernames(
+    val active: Array<String>,
+    val disabled: Array<String>,
+    val editable: String,
+    val collectible: Array<String>
+)
 
 fun ChatEntity.toTdApiChat(): TdApi.Chat {
     return TdApi.Chat().apply {

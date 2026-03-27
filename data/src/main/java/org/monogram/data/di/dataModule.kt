@@ -3,6 +3,7 @@ package org.monogram.data.di
 import android.content.Context
 import android.net.ConnectivityManager
 import androidx.room.Room
+import androidx.room.RoomDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -37,6 +38,21 @@ val dataModule = module {
     single<DispatcherProvider> { DefaultDispatcherProvider() }
     single<ScopeProvider> { DefaultScopeProvider(get()) }
     single<StringProvider> { AndroidStringProvider(androidContext()) }
+    single(createdAtStart = true) {
+        OfflineWarmup(
+            scopeProvider = get(),
+            dispatchers = get(),
+            gateway = get(),
+            chatDao = get(),
+            messageDao = get(),
+            userDao = get(),
+            userFullInfoDao = get(),
+            chatFullInfoDao = get(),
+            messageMapper = get(),
+            chatCache = get(),
+            stickerRepository = get()
+        )
+    }
 
     single { ChatCache() }
     single<TelegramGateway> {
@@ -87,11 +103,13 @@ val dataModule = module {
             androidContext(),
             MonogramDatabase::class.java,
             "monogram_db"
-        ).addMigrations(
-            MonogramDatabase.MIGRATION_14_15,
-            MonogramDatabase.MIGRATION_15_16,
-            MonogramDatabase.MIGRATION_16_17
-        ).build()
+        )
+            .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
+            .addMigrations(
+                MonogramDatabase.MIGRATION_20_21
+            )
+            .fallbackToDestructiveMigration(dropAllTables = true)
+            .build()
     }
     single { get<MonogramDatabase>().chatDao() }
     single { get<MonogramDatabase>().messageDao() }
@@ -118,6 +136,7 @@ val dataModule = module {
 
     single<ChatLocalDataSource> {
         RoomChatLocalDataSource(
+            database = get(),
             chatDao = get(),
             messageDao = get(),
             chatFullInfoDao = get(),

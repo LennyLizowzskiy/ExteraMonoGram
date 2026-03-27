@@ -67,6 +67,11 @@ class InMemoryChatLocalDataSource : ChatLocalDataSource {
             .take(limit)
     }
 
+    override suspend fun getLatestMessages(chatId: Long, limit: Int): List<MessageEntity> {
+        val chatMessages = messages[chatId]?.value?.values ?: return emptyList()
+        return chatMessages.sortedByDescending { it.date }.take(limit)
+    }
+
     override suspend fun insertMessage(message: MessageEntity) {
         messages.getOrPut(message.chatId) { MutableStateFlow(emptyMap()) }
             .update { it + (message.id to message) }
@@ -74,6 +79,43 @@ class InMemoryChatLocalDataSource : ChatLocalDataSource {
 
     override suspend fun insertMessages(messages: List<MessageEntity>) {
         messages.forEach { insertMessage(it) }
+    }
+
+    override suspend fun markAsRead(chatId: Long, upToMessageId: Long) {
+        messages[chatId]?.update { current ->
+            current.mapValues { (_, msg) ->
+                if (msg.id <= upToMessageId && !msg.isRead) msg.copy(isRead = true) else msg
+            }
+        }
+    }
+
+    override suspend fun updateMessageContent(
+        messageId: Long,
+        content: String,
+        contentType: String,
+        contentMeta: String?,
+        editDate: Int
+    ) {
+        messages.values.forEach { flow ->
+            val current = flow.value[messageId] ?: return@forEach
+            flow.update {
+                it + (messageId to current.copy(
+                    content = content,
+                    contentType = contentType,
+                    contentMeta = contentMeta,
+                    editDate = editDate
+                ))
+            }
+        }
+    }
+
+    override suspend fun updateInteractionInfo(messageId: Long, viewCount: Int, forwardCount: Int) {
+        messages.values.forEach { flow ->
+            val current = flow.value[messageId] ?: return@forEach
+            flow.update {
+                it + (messageId to current.copy(viewCount = viewCount, forwardCount = forwardCount))
+            }
+        }
     }
 
     override suspend fun deleteMessage(messageId: Long) {

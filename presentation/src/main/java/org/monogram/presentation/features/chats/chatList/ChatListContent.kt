@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -1018,9 +1019,7 @@ fun ChatListContent(component: ChatListComponent) {
 
                         if (archivedChats.isEmpty() && isArchivedLoading) {
                             item {
-                                Box(modifier = Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
-                                    CircularProgressIndicator()
-                                }
+                                ChatListShimmer(itemCount = 8)
                             }
                         }
                     }
@@ -1085,41 +1084,47 @@ fun ChatListContent(component: ChatListComponent) {
                     }
 
                     Box(modifier = Modifier.fillMaxSize()) {
-                        LazyColumn(
-                            state = scrollState,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .semantics { contentDescription = context.getString(R.string.cd_chat_list) },
-                            contentPadding = PaddingValues(top = 12.dp, bottom = 88.dp)
-                        ) {
-                            if (folderChats.isEmpty() && !isFolderLoading) {
-                                item {
-                                    EmptyStateView(modifier = Modifier.fillParentMaxSize())
+                        Crossfade(
+                            targetState = folderChats.isEmpty() && isFolderLoading,
+                            animationSpec = tween(280),
+                            label = "FolderChatsCrossfade"
+                        ) { showShimmer ->
+                            if (showShimmer) {
+                                ChatListShimmer()
+                            } else {
+                                LazyColumn(
+                                    state = scrollState,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .semantics { contentDescription = context.getString(R.string.cd_chat_list) },
+                                    contentPadding = PaddingValues(top = 12.dp, bottom = 88.dp)
+                                ) {
+                                    if (folderChats.isEmpty() && !isFolderLoading) {
+                                        item {
+                                            EmptyStateView(modifier = Modifier.fillParentMaxSize())
+                                        }
+                                    }
+
+                                    itemsIndexed(
+                                        items = folderChats,
+                                        key = { _, chat -> chat.id }
+                                    ) { _, chat ->
+                                        ChatListItem(
+                                            modifier = Modifier.animateItem(),
+                                            chat = chat,
+                                            currentUserId = state.currentUser?.id,
+                                            isSelected = state.selectedChatIds.contains(chat.id),
+                                            onClick = { onChatClicked(chat.id) },
+                                            onLongClick = { onChatLongClicked(chat.id) },
+                                            isTabletSelected = isTablet && state.activeChatId == chat.id,
+                                            videoPlayerPool = component.videoPlayerPool,
+                                            emojiFontFamily = emojiFontFamily,
+                                            messageLines = messageLines,
+                                            showPhotos = showPhotos
+                                        )
+                                    }
                                 }
                             }
-
-                            itemsIndexed(
-                                items = folderChats,
-                                key = { _, chat -> chat.id }
-                            ) { _, chat ->
-                                ChatListItem(
-                                    modifier = Modifier.animateItem(),
-                                    chat = chat,
-                                    currentUserId = state.currentUser?.id,
-                                    isSelected = state.selectedChatIds.contains(chat.id),
-                                    onClick = { onChatClicked(chat.id) },
-                                    onLongClick = { onChatLongClicked(chat.id) },
-                                    isTabletSelected = isTablet && state.activeChatId == chat.id,
-                                    videoPlayerPool = component.videoPlayerPool,
-                                    emojiFontFamily = emojiFontFamily,
-                                    messageLines = messageLines,
-                                    showPhotos = showPhotos
-                                )
-                            }
-                        }
-
-                        if (folderChats.isEmpty() && isFolderLoading) {
-                            CircularProgressIndicator(Modifier.align(Alignment.Center))
                         }
                     }
                 }

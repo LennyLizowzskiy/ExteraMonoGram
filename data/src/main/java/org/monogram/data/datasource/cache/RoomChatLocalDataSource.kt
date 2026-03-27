@@ -1,6 +1,8 @@
 package org.monogram.data.datasource.cache
 
+import androidx.room.withTransaction
 import kotlinx.coroutines.flow.Flow
+import org.monogram.data.db.MonogramDatabase
 import org.monogram.data.db.dao.ChatDao
 import org.monogram.data.db.dao.ChatFullInfoDao
 import org.monogram.data.db.dao.MessageDao
@@ -11,6 +13,7 @@ import org.monogram.data.db.model.MessageEntity
 import org.monogram.data.db.model.TopicEntity
 
 class RoomChatLocalDataSource(
+    private val database: MonogramDatabase,
     private val chatDao: ChatDao,
     private val messageDao: MessageDao,
     private val chatFullInfoDao: ChatFullInfoDao,
@@ -29,10 +32,12 @@ class RoomChatLocalDataSource(
     override suspend fun clearAllChats() = chatDao.clearAll()
 
     override suspend fun clearAll() {
-        chatDao.clearAll()
-        messageDao.clearAll()
-        chatFullInfoDao.clearAll()
-        topicDao.clearAll()
+        database.withTransaction {
+            chatDao.clearAll()
+            messageDao.clearAll()
+            chatFullInfoDao.clearAll()
+            topicDao.clearAll()
+        }
     }
 
     override fun getMessagesForChat(chatId: Long): Flow<List<MessageEntity>> = messageDao.getMessagesForChat(chatId)
@@ -41,9 +46,24 @@ class RoomChatLocalDataSource(
 
     override suspend fun getMessagesNewer(chatId: Long, fromMessageId: Long, limit: Int) = messageDao.getMessagesNewer(chatId, fromMessageId, limit)
 
+    override suspend fun getLatestMessages(chatId: Long, limit: Int) = messageDao.getLatestMessages(chatId, limit)
+
     override suspend fun insertMessage(message: MessageEntity) = messageDao.insertMessage(message)
 
     override suspend fun insertMessages(messages: List<MessageEntity>) = messageDao.insertMessages(messages)
+
+    override suspend fun markAsRead(chatId: Long, upToMessageId: Long) = messageDao.markAsRead(chatId, upToMessageId)
+
+    override suspend fun updateMessageContent(
+        messageId: Long,
+        content: String,
+        contentType: String,
+        contentMeta: String?,
+        editDate: Int
+    ) = messageDao.updateContent(messageId, content, contentType, contentMeta, editDate)
+
+    override suspend fun updateInteractionInfo(messageId: Long, viewCount: Int, forwardCount: Int) =
+        messageDao.updateInteractionInfo(messageId, viewCount, forwardCount)
 
     override suspend fun deleteMessage(messageId: Long) = messageDao.deleteMessage(messageId)
 
@@ -66,9 +86,11 @@ class RoomChatLocalDataSource(
     override suspend fun clearTopicsForChat(chatId: Long) = topicDao.clearTopicsForChat(chatId)
 
     override suspend fun deleteExpired(timestamp: Long) {
-        chatDao.deleteExpired(timestamp)
-        messageDao.deleteExpired(timestamp)
-        chatFullInfoDao.deleteExpired(timestamp)
-        topicDao.deleteExpired(timestamp)
+        database.withTransaction {
+            chatDao.deleteExpired(timestamp)
+            messageDao.deleteExpired(timestamp)
+            chatFullInfoDao.deleteExpired(timestamp)
+            topicDao.deleteExpired(timestamp)
+        }
     }
 }

@@ -876,15 +876,14 @@ fun ChatContent(
                             AnimatedVisibility(
                                 visible = showInitialLoading,
                                 enter = fadeIn(),
-                                exit = fadeOut()
+                                exit = fadeOut(animationSpec = tween(200))
                             ) {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .background(MaterialTheme.colorScheme.surface),
-                                    contentAlignment = Alignment.Center
+                                        .background(MaterialTheme.colorScheme.surface)
                                 ) {
-                                    CircularProgressIndicator()
+                                    MessageListShimmer()
                                 }
                             }
                         }

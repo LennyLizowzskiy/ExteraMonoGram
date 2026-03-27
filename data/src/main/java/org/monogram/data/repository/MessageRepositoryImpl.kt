@@ -55,8 +55,54 @@ class MessageRepositoryImpl(
             try {
                 gateway.updates.collect { update ->
                     messageRemoteDataSource.handleUpdate(update)
-                    if (update is TdApi.UpdateNewMessage) {
-                        chatLocalDataSource.insertMessage(messageMapper.mapToEntity(update.message))
+                    when (update) {
+                        is TdApi.UpdateNewMessage -> {
+                            val entity = messageMapper.mapToEntity(update.message, ::resolveSenderName)
+                            chatLocalDataSource.insertMessage(entity)
+                        }
+
+                        is TdApi.UpdateMessageContent -> {
+                            val extracted = messageMapper.extractCachedContent(update.newContent)
+                            chatLocalDataSource.updateMessageContent(
+                                messageId = update.messageId,
+                                content = extracted.text,
+                                contentType = extracted.type,
+                                contentMeta = extracted.meta,
+                                editDate = 0
+                            )
+                        }
+
+                        is TdApi.UpdateMessageEdited -> {
+                            val updated = messageRemoteDataSource.getMessage(update.chatId, update.messageId)
+                            if (updated != null) {
+                                chatLocalDataSource.insertMessage(
+                                    messageMapper.mapToEntity(
+                                        updated,
+                                        ::resolveSenderName
+                                    )
+                                )
+                            }
+                        }
+
+                        is TdApi.UpdateMessageInteractionInfo -> {
+                            chatLocalDataSource.updateInteractionInfo(
+                                messageId = update.messageId,
+                                viewCount = update.interactionInfo?.viewCount ?: 0,
+                                forwardCount = update.interactionInfo?.forwardCount ?: 0
+                            )
+                        }
+
+                        is TdApi.UpdateChatReadInbox -> {
+                            chatLocalDataSource.markAsRead(update.chatId, update.lastReadInboxMessageId)
+                        }
+
+                        is TdApi.UpdateDeleteMessages -> {
+                            if (update.isPermanent) {
+                                update.messageIds.forEach { messageId ->
+                                    chatLocalDataSource.deleteMessage(messageId)
+                                }
+                            }
+                        }
                     }
                 }
             } catch (e: Exception) {
@@ -65,8 +111,8 @@ class MessageRepositoryImpl(
         }
 
         scope.launch(dispatcherProvider.io) {
-            val oneMonthAgo = System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000)
-            chatLocalDataSource.deleteExpired(oneMonthAgo)
+            val ninetyDaysAgo = System.currentTimeMillis() - (90L * 24 * 60 * 60 * 1000)
+            chatLocalDataSource.deleteExpired(ninetyDaysAgo)
         }
     }
 
@@ -262,16 +308,30 @@ class MessageRepositoryImpl(
         threadId: Long?
     ): List<MessageModel> =
         withContext(dispatcherProvider.io) {
-            val remoteMessages = messageRemoteDataSource.getMessagesOlder(chatId, fromMessageId, limit, threadId)
+            val cached = if (fromMessageId == 0L) {
+                chatLocalDataSource.getLatestMessages(chatId, limit).map { messageMapper.mapEntityToModel(it) }
+            } else {
+                emptyList()
+            }
 
-            scope.launch(dispatcherProvider.io) {
-                remoteMessages.forEach { model ->
-                    messageRemoteDataSource.getMessage(chatId, model.id)?.let {
-                        chatLocalDataSource.insertMessage(messageMapper.mapToEntity(it))
-                    }
+            try {
+                val remoteMessages = messageRemoteDataSource.getMessagesOlder(chatId, fromMessageId, limit, threadId)
+                persistRemoteMessages(chatId, remoteMessages)
+                remoteMessages
+            } catch (e: Exception) {
+                if (cached.isNotEmpty()) {
+                    cached
+                } else {
+                    val local = chatLocalDataSource.getMessagesOlder(chatId, fromMessageId, limit)
+                    local.map { messageMapper.mapEntityToModel(it) }
                 }
             }
-            remoteMessages
+        }
+
+    override suspend fun getCachedMessages(chatId: Long, limit: Int): List<MessageModel> =
+        withContext(dispatcherProvider.io) {
+            chatLocalDataSource.getLatestMessages(chatId, limit)
+                .map { messageMapper.mapEntityToModel(it) }
         }
 
     override suspend fun getMessagesNewer(
@@ -281,17 +341,14 @@ class MessageRepositoryImpl(
         threadId: Long?
     ): List<MessageModel> =
         withContext(dispatcherProvider.io) {
-            val remoteMessages = messageRemoteDataSource.getMessagesNewer(chatId, fromMessageId, limit, threadId)
-
-            scope.launch(dispatcherProvider.io) {
-                remoteMessages.forEach { model ->
-                    messageRemoteDataSource.getMessage(chatId, model.id)?.let {
-                        chatLocalDataSource.insertMessage(messageMapper.mapToEntity(it))
-                    }
-                }
+            try {
+                val remoteMessages = messageRemoteDataSource.getMessagesNewer(chatId, fromMessageId, limit, threadId)
+                persistRemoteMessages(chatId, remoteMessages)
+                remoteMessages
+            } catch (e: Exception) {
+                chatLocalDataSource.getMessagesNewer(chatId, fromMessageId, limit)
+                    .map { messageMapper.mapEntityToModel(it) }
             }
-
-            remoteMessages
         }
 
     override suspend fun getMessagesAround(
@@ -301,16 +358,13 @@ class MessageRepositoryImpl(
         threadId: Long?
     ): List<MessageModel> =
         withContext(dispatcherProvider.io) {
-            val remoteMessages = messageRemoteDataSource.getMessagesAround(chatId, messageId, limit, threadId)
-
-            scope.launch(dispatcherProvider.io) {
-                remoteMessages.forEach { model ->
-                    messageRemoteDataSource.getMessage(chatId, model.id)?.let {
-                        chatLocalDataSource.insertMessage(messageMapper.mapToEntity(it))
-                    }
-                }
+            try {
+                val remoteMessages = messageRemoteDataSource.getMessagesAround(chatId, messageId, limit, threadId)
+                persistRemoteMessages(chatId, remoteMessages)
+                remoteMessages
+            } catch (e: Exception) {
+                chatLocalDataSource.getLatestMessages(chatId, limit).map { messageMapper.mapEntityToModel(it) }
             }
-            remoteMessages
         }
 
     @Deprecated("Use getMessagesOlder instead")
@@ -1089,5 +1143,28 @@ class MessageRepositoryImpl(
         scope.launch(dispatcherProvider.io) {
             chatLocalDataSource.clearAll()
         }
+    }
+
+    private fun persistRemoteMessages(chatId: Long, remoteMessages: List<MessageModel>) {
+        scope.launch(dispatcherProvider.io) {
+            val entities = remoteMessages.mapNotNull { model ->
+                messageRemoteDataSource.getMessage(chatId, model.id)?.let { message ->
+                    messageMapper.mapToEntity(message, ::resolveSenderName)
+                }
+            }
+            if (entities.isNotEmpty()) {
+                chatLocalDataSource.insertMessages(entities)
+            }
+        }
+    }
+
+    private fun resolveSenderName(senderId: Long): String? {
+        val user = cache.getUser(senderId)
+        if (user != null) {
+            return listOfNotNull(user.firstName.takeIf { it.isNotBlank() }, user.lastName?.takeIf { it.isNotBlank() })
+                .joinToString(" ")
+                .ifBlank { null }
+        }
+        return cache.getChat(senderId)?.title
     }
 }

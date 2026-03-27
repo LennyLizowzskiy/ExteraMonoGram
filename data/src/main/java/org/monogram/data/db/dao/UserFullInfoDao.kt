@@ -14,6 +14,9 @@ interface UserFullInfoDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertUserFullInfo(info: UserFullInfoEntity)
 
+    @Query("SELECT * FROM user_full_info WHERE userId IN (:userIds)")
+    suspend fun getUserFullInfos(userIds: List<Long>): List<UserFullInfoEntity>
+
     @Query("DELETE FROM user_full_info WHERE userId = :userId")
     suspend fun deleteUserFullInfo(userId: Long)
 

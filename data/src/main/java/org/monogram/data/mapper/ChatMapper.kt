@@ -278,6 +278,8 @@ class ChatMapper(private val stringProvider: StringProvider) {
             permissionCanInviteUsers = domain.permissions.canInviteUsers,
             permissionCanPinMessages = domain.permissions.canPinMessages,
             permissionCanCreateTopics = domain.permissions.canCreateTopics,
+            lastMessageContentType = "text",
+            lastMessageSenderName = "",
             createdAt = System.currentTimeMillis()
         )
     }
@@ -320,12 +322,35 @@ class ChatMapper(private val stringProvider: StringProvider) {
             }
         }
         val encodedPositions = encodePositions(chat.positions)
+        val (lastMessageContentType, lastMessageSenderName) = chat.lastMessage?.let { message ->
+            val type = when (message.content) {
+                is TdApi.MessageText -> "text"
+                is TdApi.MessagePhoto -> "photo"
+                is TdApi.MessageVideo -> "video"
+                is TdApi.MessageVoiceNote -> "voice"
+                is TdApi.MessageVideoNote -> "video_note"
+                is TdApi.MessageSticker -> "sticker"
+                is TdApi.MessageDocument -> "document"
+                is TdApi.MessageAudio -> "audio"
+                is TdApi.MessageAnimation -> "gif"
+                is TdApi.MessageContact -> "contact"
+                is TdApi.MessagePoll -> "poll"
+                is TdApi.MessageLocation -> "location"
+                is TdApi.MessageCall -> "call"
+                else -> "message"
+            }
+            val sender = ""
+            type to sender
+        } ?: ("text" to "")
+
         return mapToEntity(domain).copy(
             privateUserId = privateUserId,
             basicGroupId = basicGroupId,
             supergroupId = supergroupId,
             secretChatId = secretChatId,
-            positionsCache = encodedPositions
+            positionsCache = encodedPositions,
+            lastMessageContentType = lastMessageContentType,
+            lastMessageSenderName = lastMessageSenderName
         )
     }
 
