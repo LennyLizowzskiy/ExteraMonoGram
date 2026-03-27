@@ -23,7 +23,16 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.Subject
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.outlined.AlternateEmail
+import androidx.compose.material.icons.outlined.Code
+import androidx.compose.material.icons.outlined.FormatBold
+import androidx.compose.material.icons.outlined.FormatClear
+import androidx.compose.material.icons.outlined.FormatItalic
+import androidx.compose.material.icons.outlined.FormatStrikethrough
+import androidx.compose.material.icons.outlined.FormatUnderlined
+import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.outlined.AddCircleOutline
 import androidx.compose.material3.*
@@ -33,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
@@ -945,7 +955,7 @@ fun ChatInputBar(
                                             horizontalArrangement = Arrangement.spacedBy(2.dp)
                                         ) {
                                             FullScreenEditorToolButton(
-                                                label = "B",
+                                                icon = Icons.Outlined.FormatBold,
                                                 hint = stringResource(R.string.rich_text_bold),
                                                 enabled = hasFormattableSelectionInEditor,
                                                 onClick = {
@@ -953,7 +963,7 @@ fun ChatInputBar(
                                                 }
                                             )
                                             FullScreenEditorToolButton(
-                                                label = "/",
+                                                icon = Icons.Outlined.FormatItalic,
                                                 hint = stringResource(R.string.rich_text_italic),
                                                 enabled = hasFormattableSelectionInEditor,
                                                 onClick = {
@@ -961,7 +971,7 @@ fun ChatInputBar(
                                                 }
                                             )
                                             FullScreenEditorToolButton(
-                                                label = "U",
+                                                icon = Icons.Outlined.FormatUnderlined,
                                                 hint = stringResource(R.string.rich_text_underline),
                                                 enabled = hasFormattableSelectionInEditor,
                                                 onClick = {
@@ -969,7 +979,7 @@ fun ChatInputBar(
                                                 }
                                             )
                                             FullScreenEditorToolButton(
-                                                label = "S",
+                                                icon = Icons.Outlined.FormatStrikethrough,
                                                 hint = stringResource(R.string.rich_text_strikethrough),
                                                 enabled = hasFormattableSelectionInEditor,
                                                 onClick = {
@@ -980,7 +990,7 @@ fun ChatInputBar(
                                                 }
                                             )
                                             FullScreenEditorToolButton(
-                                                label = "M",
+                                                icon = Icons.Outlined.Code,
                                                 hint = stringResource(R.string.rich_text_code),
                                                 enabled = hasFormattableSelectionInEditor,
                                                 onClick = {
@@ -988,7 +998,7 @@ fun ChatInputBar(
                                                 }
                                             )
                                             FullScreenEditorToolButton(
-                                                label = "( )",
+                                                icon = Icons.Outlined.Link,
                                                 hint = stringResource(R.string.rich_text_link),
                                                 enabled = hasFormattableSelectionInEditor,
                                                 onClick = {
@@ -1016,14 +1026,14 @@ fun ChatInputBar(
                                                 }
                                             )
                                             FullScreenEditorToolButton(
-                                                label = "@",
+                                                icon = Icons.Outlined.AlternateEmail,
                                                 hint = stringResource(R.string.rich_text_mention),
                                                 onClick = {
                                                     textValue = insertMentionAtSelection(textValue)
                                                 }
                                             )
                                             FullScreenEditorToolButton(
-                                                label = "P",
+                                                icon = Icons.AutoMirrored.Outlined.Subject,
                                                 hint = stringResource(R.string.rich_text_pre),
                                                 enabled = hasFormattableSelectionInEditor,
                                                 onClick = {
@@ -1050,7 +1060,7 @@ fun ChatInputBar(
                                                 }
                                             )
                                             FullScreenEditorToolButton(
-                                                label = "X",
+                                                icon = Icons.Outlined.FormatClear,
                                                 hint = stringResource(R.string.rich_text_clear),
                                                 enabled = hasFormattableSelectionInEditor,
                                                 onClick = {
@@ -1470,7 +1480,7 @@ private fun FullScreenEditorMetaPill(
 
 @Composable
 private fun FullScreenEditorToolButton(
-    label: String,
+    icon: ImageVector,
     hint: String,
     enabled: Boolean = true,
     onClick: () -> Unit
@@ -1489,10 +1499,10 @@ private fun FullScreenEditorToolButton(
             .padding(horizontal = 10.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.headlineSmall,
-            color = if (enabled) {
+        Icon(
+            imageVector = icon,
+            contentDescription = hint,
+            tint = if (enabled) {
                 MaterialTheme.colorScheme.onSurface
             } else {
                 MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
