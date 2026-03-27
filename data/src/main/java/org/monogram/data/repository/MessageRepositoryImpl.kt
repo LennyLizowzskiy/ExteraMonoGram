@@ -398,13 +398,11 @@ class MessageRepositoryImpl(
         } else {
             null
         }
-        draft?.let {
-            scope.launch {
-                messageRemoteDataSource.saveChatDraft(chatId, it, replyToMsgId, threadId)
+        withContext(dispatcherProvider.io) {
+            messageRemoteDataSource.saveChatDraft(chatId, draft, replyToMsgId, threadId)
 
-                cache.updateChat(chatId) { chat ->
-                    chat.draftMessage = it
-                }
+            cache.updateChat(chatId) { chat ->
+                chat.draftMessage = draft
             }
         }
     }

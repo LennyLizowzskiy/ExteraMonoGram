@@ -57,6 +57,7 @@ class DefaultChatComponent(
     var loadMoreJob: Job? = null
     var loadNewerJob: Job? = null
     var inlineBotJob: Job? = null
+    var draftSaveJob: Job? = null
     private var autoLoadJob: Job? = null
     private var mentionJob: Job? = null
 

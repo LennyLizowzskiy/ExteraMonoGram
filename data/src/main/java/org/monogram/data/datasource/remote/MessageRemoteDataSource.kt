@@ -127,7 +127,7 @@ interface MessageRemoteDataSource {
     suspend fun markAllMentionsAsRead(chatId: Long)
     suspend fun pinMessage(chatId: Long, messageId: Long, disableNotification: Boolean)
     suspend fun unpinMessage(chatId: Long, messageId: Long)
-    suspend fun saveChatDraft(chatId: Long, text: TdApi.DraftMessage, replyToMsgId: Long?, threadId: Long? = null)
+    suspend fun saveChatDraft(chatId: Long, draft: TdApi.DraftMessage?, replyToMsgId: Long?, threadId: Long? = null)
     suspend fun getChatDraft(chatId: Long, threadId: Long? = null): String?
     fun updateVisibleRange(chatId: Long, visibleIds: List<Long>, nearbyIds: List<Long>)
     suspend fun onCallbackQueryBuy(chatId: Long, messageId: Long)

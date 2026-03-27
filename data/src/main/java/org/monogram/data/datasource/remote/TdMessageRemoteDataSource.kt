@@ -1062,7 +1062,7 @@ class TdMessageRemoteDataSource(
         safeExecute(request)
     }
 
-    override suspend fun saveChatDraft(chatId: Long, draft: TdApi.DraftMessage, replyToMsgId: Long?, threadId: Long?) {
+    override suspend fun saveChatDraft(chatId: Long, draft: TdApi.DraftMessage?, replyToMsgId: Long?, threadId: Long?) {
         val request = TdApi.SetChatDraftMessage().apply {
             this.chatId = chatId
             this.draftMessage = draft
