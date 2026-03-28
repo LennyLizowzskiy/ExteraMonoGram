@@ -418,13 +418,12 @@ fun EmojiSearchBar(
             onValueChange = onQueryChange,
             modifier = Modifier
                 .weight(1f)
-                .height(44.dp)
+                .heightIn(min = 44.dp)
                 .onFocusChanged { onFocusChanged(it.isFocused) },
             placeholder = {
                 Text(
                     text = stringResource(R.string.emojis_search_placeholder),
                     style = MaterialTheme.typography.bodyMedium.copy(
-                        lineHeight = 18.sp,
                         platformStyle = PlatformTextStyle(includeFontPadding = false)
                     )
                 )
@@ -453,7 +452,6 @@ fun EmojiSearchBar(
                 unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh
             ),
             textStyle = MaterialTheme.typography.bodyMedium.copy(
-                lineHeight = 18.sp,
                 platformStyle = PlatformTextStyle(includeFontPadding = false)
             )
         )
