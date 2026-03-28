@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -47,6 +48,7 @@ import org.monogram.presentation.features.stickers.ui.view.StickerItem
 @Composable
 fun EmojisGrid(
     onEmojiSelected: (String, StickerModel?) -> Unit,
+    emojiOnlyMode: Boolean = false,
     onSearchFocused: (Boolean) -> Unit = {},
     contentPadding: PaddingValues = PaddingValues(0.dp),
     stickerRepository: StickerRepository = koinInject(),
@@ -69,6 +71,12 @@ fun EmojisGrid(
     val context = LocalContext.current
     val emojiStyle by appPreferences.emojiStyle.collectAsState()
     val emojiFontFamily = remember(context, emojiStyle) { getEmojiFontFamily(context, emojiStyle) }
+    val filteredRecentEmojis = remember(recentEmojis, emojiOnlyMode) {
+        if (emojiOnlyMode) recentEmojis.filter { it.sticker?.customEmojiId != null } else recentEmojis
+    }
+    val visibleStandardEmojis = remember(standardEmojis, emojiOnlyMode) {
+        if (emojiOnlyMode) emptyList() else standardEmojis
+    }
 
     LaunchedEffect(Unit) {
         standardEmojis = stickerRepository.getDefaultEmojis()
@@ -86,7 +94,11 @@ fun EmojisGrid(
 
     LaunchedEffect(debouncedSearchQuery) {
         if (debouncedSearchQuery.length >= 2) {
-            searchResultsEmojis = stickerRepository.searchEmojis(debouncedSearchQuery)
+            searchResultsEmojis = if (emojiOnlyMode) {
+                emptyList()
+            } else {
+                stickerRepository.searchEmojis(debouncedSearchQuery)
+            }
             searchResultsCustomEmojis = stickerRepository.searchCustomEmojis(debouncedSearchQuery)
         } else {
             searchResultsEmojis = emptyList()
@@ -94,18 +106,18 @@ fun EmojisGrid(
         }
     }
 
-    val sectionOffsets = remember(recentEmojis, standardEmojis, customEmojiSets) {
+    val sectionOffsets = remember(filteredRecentEmojis, visibleStandardEmojis, customEmojiSets) {
         val offsets = mutableListOf<EmojiSectionOffset>()
         var cursor = 0
 
-        if (recentEmojis.isNotEmpty()) {
-            val count = recentEmojis.size + 1
+        if (filteredRecentEmojis.isNotEmpty()) {
+            val count = filteredRecentEmojis.size + 1
             offsets += EmojiSectionOffset(id = -1L, startIndex = cursor, endExclusive = cursor + count)
             cursor += count
         }
 
-        if (standardEmojis.isNotEmpty()) {
-            val count = standardEmojis.size + 1
+        if (visibleStandardEmojis.isNotEmpty()) {
+            val count = visibleStandardEmojis.size + 1
             offsets += EmojiSectionOffset(id = -2L, startIndex = cursor, endExclusive = cursor + count)
             cursor += count
         }
@@ -123,11 +135,17 @@ fun EmojisGrid(
         sectionOffsets.associate { it.id to it.startIndex }
     }
 
-    val localSearchFallbackResults = remember(debouncedSearchQuery, standardEmojis) {
+    val localSearchFallbackResults = remember(debouncedSearchQuery, visibleStandardEmojis) {
         if (debouncedSearchQuery.isNotEmpty()) {
-            standardEmojis.filter { it.contains(debouncedSearchQuery) }
+            visibleStandardEmojis.filter { it.contains(debouncedSearchQuery) }
         } else {
             emptyList()
+        }
+    }
+
+    LaunchedEffect(sectionOffsets) {
+        if (sectionOffsets.isNotEmpty() && sectionOffsets.none { it.id == selectedSetId }) {
+            selectedSetId = sectionOffsets.first().id
         }
     }
 
@@ -167,8 +185,8 @@ fun EmojisGrid(
             EmojiSetsRow(
                 customEmojiSets = customEmojiSets,
                 selectedSetId = selectedSetId,
-                hasRecent = recentEmojis.isNotEmpty(),
-                hasStandard = standardEmojis.isNotEmpty(),
+                hasRecent = filteredRecentEmojis.isNotEmpty(),
+                hasStandard = visibleStandardEmojis.isNotEmpty(),
                 onSetSelected = { id ->
                     selectedSetId = id
                     scope.launch {
@@ -235,7 +253,7 @@ fun EmojisGrid(
                             }
                         }
 
-                        if (searchResultsEmojis.isEmpty() && searchResultsCustomEmojis.isEmpty()) {
+                        if (!emojiOnlyMode && searchResultsEmojis.isEmpty() && searchResultsCustomEmojis.isEmpty()) {
                             items(localSearchFallbackResults, key = { "search_local_$it" }) { emoji ->
                                 EmojiGridItem(emoji, emojiFontFamily) {
                                     onEmojiSelected(emoji, null)
@@ -245,12 +263,12 @@ fun EmojisGrid(
                         }
                     } else {
                         // Recent Emojis
-                        if (recentEmojis.isNotEmpty()) {
+                        if (filteredRecentEmojis.isNotEmpty()) {
                             item(span = { GridItemSpan(maxLineSpan) }) {
                                 PackHeader(stringResource(R.string.emojis_header_recent))
                             }
                             itemsIndexed(
-                                recentEmojis,
+                                filteredRecentEmojis,
                                 key = { index, item ->
                                     val stickerKey = item.sticker?.customEmojiId ?: item.sticker?.id
                                     "recent_${stickerKey ?: item.emoji}_$index"
@@ -287,12 +305,12 @@ fun EmojisGrid(
                         }
 
                         // Standard Emojis
-                        if (standardEmojis.isNotEmpty()) {
+                        if (visibleStandardEmojis.isNotEmpty()) {
                             item(span = { GridItemSpan(maxLineSpan) }) {
                                 PackHeader(stringResource(R.string.emojis_header_standard))
                             }
                             itemsIndexed(
-                                standardEmojis,
+                                visibleStandardEmojis,
                                 key = { index, emoji -> "standard_${emoji}_$index" }
                             ) { _, emoji ->
                                 EmojiGridItem(emoji, emojiFontFamily) {
@@ -374,7 +392,7 @@ fun EmojiSearchBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 32.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (isSearchMode) {
@@ -400,9 +418,17 @@ fun EmojiSearchBar(
             onValueChange = onQueryChange,
             modifier = Modifier
                 .weight(1f)
-                .height(48.dp)
+                .height(44.dp)
                 .onFocusChanged { onFocusChanged(it.isFocused) },
-            placeholder = { Text(stringResource(R.string.emojis_search_placeholder), style = MaterialTheme.typography.bodyMedium) },
+            placeholder = {
+                Text(
+                    text = stringResource(R.string.emojis_search_placeholder),
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        lineHeight = 18.sp,
+                        platformStyle = PlatformTextStyle(includeFontPadding = false)
+                    )
+                )
+            },
             leadingIcon = if (!isSearchMode) {
                 {
                     Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(20.dp))
@@ -426,7 +452,10 @@ fun EmojiSearchBar(
                 focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                 unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh
             ),
-            textStyle = MaterialTheme.typography.bodyMedium
+            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                lineHeight = 18.sp,
+                platformStyle = PlatformTextStyle(includeFontPadding = false)
+            )
         )
     }
 }
@@ -464,9 +493,9 @@ fun EmojiSetsRow(
         state = listState,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
+            .padding(vertical = 4.dp),
         contentPadding = PaddingValues(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (hasRecent) {
@@ -479,7 +508,7 @@ fun EmojiSetsRow(
                             imageVector = Icons.Outlined.EmojiEmotions,
                             contentDescription = stringResource(R.string.common_recent),
                             tint = if (selectedSetId == -1L) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 )

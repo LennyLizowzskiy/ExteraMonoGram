@@ -25,16 +25,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Subject
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.outlined.AlternateEmail
-import androidx.compose.material.icons.outlined.Code
-import androidx.compose.material.icons.outlined.FormatBold
-import androidx.compose.material.icons.outlined.FormatClear
-import androidx.compose.material.icons.outlined.FormatItalic
-import androidx.compose.material.icons.outlined.FormatStrikethrough
-import androidx.compose.material.icons.outlined.FormatUnderlined
-import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.outlined.AddCircleOutline
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -43,9 +35,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.*
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextRange
@@ -168,6 +158,9 @@ fun ChatInputBar(
 
     var textValue by remember { mutableStateOf(TextFieldValue(state.draftText)) }
     var isStickerMenuVisible by remember { mutableStateOf(false) }
+    var closeStickerMenuWithoutSlide by remember { mutableStateOf(false) }
+    var openStickerMenuAfterKeyboardClosed by remember { mutableStateOf(false) }
+    var openKeyboardAfterStickerMenuClosed by remember { mutableStateOf(false) }
     var isVideoMessageMode by remember { mutableStateOf(false) }
     var isGifSearchFocused by remember { mutableStateOf(false) }
     var showGallery by remember { mutableStateOf(false) } // New state for gallery visibility
@@ -184,10 +177,56 @@ fun ChatInputBar(
     val knownCustomEmojis = remember { mutableStateMapOf<Long, StickerModel>() }
 
     val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     val focusRequester = remember { FocusRequester() }
     val fullScreenFocusRequester = remember { FocusRequester() }
+    val configuration = LocalConfiguration.current
     val density = LocalDensity.current
-    val isKeyboardVisible = WindowInsets.ime.getBottom(density) > 0
+    val imeBottomPx = WindowInsets.ime.getBottom(density)
+    val isKeyboardVisible = imeBottomPx > 0
+    var lastImeHeightPx by remember { mutableIntStateOf(0) }
+    LaunchedEffect(imeBottomPx) {
+        if (imeBottomPx > 0) {
+            lastImeHeightPx = imeBottomPx
+        }
+    }
+    val stickerMenuHeight = with(density) {
+        val imeHeightDp = maxOf(imeBottomPx, lastImeHeightPx).toDp()
+        val fallbackHeightDp = maxOf(configuration.screenHeightDp.dp * 0.42f, 320.dp)
+        maxOf(imeHeightDp, fallbackHeightDp)
+    }
+    val transitionHoldBottomInset = with(density) {
+        if (!isKeyboardVisible && !isStickerMenuVisible && (openStickerMenuAfterKeyboardClosed || openKeyboardAfterStickerMenuClosed)) {
+            lastImeHeightPx.toDp()
+        } else {
+            0.dp
+        }
+    }
+
+    LaunchedEffect(isKeyboardVisible, openStickerMenuAfterKeyboardClosed) {
+        if (!isKeyboardVisible && openStickerMenuAfterKeyboardClosed) {
+            openStickerMenuAfterKeyboardClosed = false
+            closeStickerMenuWithoutSlide = false
+            isStickerMenuVisible = true
+        }
+    }
+
+    LaunchedEffect(isKeyboardVisible, openKeyboardAfterStickerMenuClosed) {
+        if (isKeyboardVisible && openKeyboardAfterStickerMenuClosed) {
+            openKeyboardAfterStickerMenuClosed = false
+        }
+    }
+
+    LaunchedEffect(showGallery) {
+        if (showGallery) {
+            openStickerMenuAfterKeyboardClosed = false
+            openKeyboardAfterStickerMenuClosed = false
+            closeStickerMenuWithoutSlide = false
+            isStickerMenuVisible = false
+            keyboardController?.hide()
+            focusManager.clearFocus(force = true)
+        }
+    }
 
     var lastEditingMessageId by remember { mutableStateOf<Long?>(null) }
 
@@ -371,10 +410,15 @@ fun ChatInputBar(
         }
     }
 
-    BackHandler(enabled = isStickerMenuVisible || state.pendingMediaPaths.isNotEmpty() || showGallery || showCamera || showFullScreenEditor || showSendOptionsSheet || showScheduledMessagesSheet || showFullScreenEmojiPicker) {
+    BackHandler(enabled = isStickerMenuVisible || openStickerMenuAfterKeyboardClosed || openKeyboardAfterStickerMenuClosed || state.pendingMediaPaths.isNotEmpty() || showGallery || showCamera || showFullScreenEditor || showSendOptionsSheet || showScheduledMessagesSheet || showFullScreenEmojiPicker) {
         if (isGifSearchFocused) {
             focusManager.clearFocus()
+        } else if (openStickerMenuAfterKeyboardClosed) {
+            openStickerMenuAfterKeyboardClosed = false
+        } else if (openKeyboardAfterStickerMenuClosed) {
+            openKeyboardAfterStickerMenuClosed = false
         } else if (isStickerMenuVisible) {
+            closeStickerMenuWithoutSlide = false
             isStickerMenuVisible = false
         } else if (showFullScreenEmojiPicker) {
             showFullScreenEmojiPicker = false
@@ -450,6 +494,7 @@ fun ChatInputBar(
                     modifier = Modifier
                         .fillMaxWidth()
                         .imePadding()
+                        .padding(bottom = transitionHoldBottomInset)
                 ) {
                     InputPreviewSection(
                         editingMessage = state.editingMessage,
@@ -579,6 +624,12 @@ fun ChatInputBar(
                                     pendingMediaPaths = state.pendingMediaPaths,
                                     canSendMedia = canSendMedia,
                                     onAttachClick = {
+                                        openStickerMenuAfterKeyboardClosed = false
+                                        openKeyboardAfterStickerMenuClosed = false
+                                        closeStickerMenuWithoutSlide = false
+                                        isStickerMenuVisible = false
+                                        keyboardController?.hide()
+                                        focusManager.clearFocus(force = true)
                                         showGallery = true
                                     }
                                 )
@@ -620,8 +671,25 @@ fun ChatInputBar(
                                             canWriteText = canWriteText,
                                             isStickerMenuVisible = isStickerMenuVisible,
                                             onStickerMenuToggle = {
-                                                isStickerMenuVisible = !isStickerMenuVisible
-                                                if (isStickerMenuVisible) focusManager.clearFocus()
+                                                if (isStickerMenuVisible) {
+                                                    openStickerMenuAfterKeyboardClosed = false
+                                                    openKeyboardAfterStickerMenuClosed = true
+                                                    closeStickerMenuWithoutSlide = true
+                                                    isStickerMenuVisible = false
+                                                    focusRequester.requestFocus()
+                                                } else {
+                                                    openKeyboardAfterStickerMenuClosed = false
+                                                    closeStickerMenuWithoutSlide = false
+                                                    if (isKeyboardVisible) {
+                                                        openStickerMenuAfterKeyboardClosed = true
+                                                        keyboardController?.hide()
+                                                        focusManager.clearFocus(force = true)
+                                                    } else {
+                                                        openStickerMenuAfterKeyboardClosed = false
+                                                        isStickerMenuVisible = true
+                                                        focusManager.clearFocus()
+                                                    }
+                                                }
                                             },
                                             onShowBotCommands = actions.onShowBotCommands,
                                             onOpenMiniApp = actions.onOpenMiniApp,
@@ -629,7 +697,14 @@ fun ChatInputBar(
                                             emojiFontFamily = emojiFontFamily,
                                             focusRequester = focusRequester,
                                             pendingMediaPaths = state.pendingMediaPaths,
-                                            onFocus = { isStickerMenuVisible = false },
+                                            onFocus = {
+                                                openStickerMenuAfterKeyboardClosed = false
+                                                openKeyboardAfterStickerMenuClosed = false
+                                                if (isStickerMenuVisible) {
+                                                    closeStickerMenuWithoutSlide = true
+                                                }
+                                                isStickerMenuVisible = false
+                                            },
                                             onOpenFullScreenEditor = { showFullScreenEditor = true },
                                             modifier = Modifier.fillMaxWidth()
                                         )
@@ -717,14 +792,18 @@ fun ChatInputBar(
 
                     AnimatedVisibility(
                         visible = isStickerMenuVisible,
-                        enter = expandVertically(
-                            animationSpec = tween(200),
-                            expandFrom = Alignment.Top
-                        ) + fadeIn(),
-                        exit = shrinkVertically(
-                            animationSpec = tween(200),
-                            shrinkTowards = Alignment.Top
-                        ) + fadeOut()
+                        enter = slideInVertically(
+                            animationSpec = tween(220),
+                            initialOffsetY = { it }
+                        ) + fadeIn(animationSpec = tween(170)),
+                        exit = if (closeStickerMenuWithoutSlide) {
+                            fadeOut(animationSpec = tween(90))
+                        } else {
+                            slideOutVertically(
+                                animationSpec = tween(170),
+                                targetOffsetY = { it }
+                            ) + fadeOut(animationSpec = tween(120))
+                        }
                     ) {
                         StickerEmojiMenu(
                             onStickerSelected = { sticker ->
@@ -744,6 +823,7 @@ fun ChatInputBar(
                             onSearchFocused = { focused ->
                                 isGifSearchFocused = focused
                             },
+                            panelHeight = stickerMenuHeight,
                             videoPlayerPool = videoPlayerPool,
                             stickerRepository = stickerRepository
                         )

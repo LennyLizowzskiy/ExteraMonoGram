@@ -32,11 +32,11 @@ fun SetItem(
     
     Box(
         modifier = Modifier
-            .size(44.dp)
+            .size(38.dp)
             .clip(CircleShape)
             .background(containerColor)
             .clickable(onClick = onClick)
-            .padding(if (icon != null) 10.dp else 4.dp),
+            .padding(if (icon != null) 8.dp else 3.dp),
         contentAlignment = Alignment.Center
     ) {
         if (icon != null) {

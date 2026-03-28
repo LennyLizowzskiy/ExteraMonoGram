@@ -33,6 +33,7 @@ interface SettingsComponent {
     fun onShowSupportClicked()
     fun onMoreOptionsClicked()
     fun onMoreOptionsDismissed()
+    fun onSetEmojiStatus(customEmojiId: Long, statusPath: String?)
 
     data class State(
         val currentUser: UserModel? = null,

@@ -1,6 +1,7 @@
 package org.monogram.presentation.features.stickers.ui.menu
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -15,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import org.monogram.domain.models.GifModel
 import org.monogram.domain.models.StickerModel
@@ -28,6 +30,7 @@ fun StickerEmojiMenu(
     onStickerSelected: (String) -> Unit,
     onEmojiSelected: (String, StickerModel?) -> Unit,
     onGifSelected: (GifModel) -> Unit,
+    panelHeight: Dp = 400.dp,
     emojiOnlyMode: Boolean = false,
     onSearchFocused: (Boolean) -> Unit = {},
     videoPlayerPool: VideoPlayerPool,
@@ -53,7 +56,7 @@ fun StickerEmojiMenu(
         } else {
             Modifier
                 .fillMaxWidth()
-                .height(400.dp)
+                .height(panelHeight)
                 .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
         },
         color = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -68,16 +71,17 @@ fun StickerEmojiMenu(
                             isSearchMode = focused
                             onSearchFocused(focused)
                         },
-                        contentPadding = PaddingValues(bottom = 88.dp)
+                        contentPadding = PaddingValues(bottom = 76.dp)
                     )
 
                     1 -> EmojisGrid(
                         onEmojiSelected = onEmojiSelected,
+                        emojiOnlyMode = emojiOnlyMode,
                         onSearchFocused = { focused ->
                             isSearchMode = focused
                             onSearchFocused(focused)
                         },
-                        contentPadding = PaddingValues(bottom = 88.dp)
+                        contentPadding = PaddingValues(bottom = 76.dp)
                     )
 
                     2 -> GifsView(
@@ -86,7 +90,7 @@ fun StickerEmojiMenu(
                             isSearchMode = focused
                             onSearchFocused(focused)
                         },
-                        contentPadding = PaddingValues(bottom = 88.dp),
+                        contentPadding = PaddingValues(bottom = 76.dp),
                         videoPlayerPool = videoPlayerPool,
                         stickerRepository = stickerRepository
                     )
@@ -95,11 +99,13 @@ fun StickerEmojiMenu(
 
             AnimatedVisibility(
                 visible = !isSearchMode && !emojiOnlyMode,
-                enter = fadeIn() + slideInVertically { it / 2 } + scaleIn(initialScale = 0.8f),
-                exit = fadeOut() + slideOutVertically { it / 2 } + scaleOut(targetScale = 0.8f),
+                enter = fadeIn(animationSpec = tween(180)) +
+                        slideInVertically(animationSpec = tween(220)) { it / 4 },
+                exit = fadeOut(animationSpec = tween(130)) +
+                        slideOutVertically(animationSpec = tween(180)) { it / 4 },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 24.dp)
+                    .padding(bottom = 16.dp)
             ) {
                 FloatingTabs(tabs, selectedTab) { selectedTab = it }
             }

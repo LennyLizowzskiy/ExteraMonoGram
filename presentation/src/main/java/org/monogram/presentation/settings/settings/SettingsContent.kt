@@ -4,7 +4,14 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.*
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,9 +25,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.*
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -28,6 +40,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
@@ -39,9 +52,11 @@ import org.monogram.presentation.core.ui.*
 import org.monogram.presentation.core.util.CountryManager
 import org.monogram.presentation.core.util.ScrollStrategy
 import org.monogram.presentation.core.util.formatMaskedGlobal
+import org.monogram.presentation.features.stickers.ui.menu.EmojisGrid
 import org.monogram.presentation.features.stickers.ui.view.StickerImage
 import org.monogram.presentation.settings.sessions.SectionHeader
 import java.util.*
+import kotlin.math.roundToInt
 
 val QrBackgroundColor = Color(0xFFEFF1E6)
 val QrDarkGreen = Color(0xFF3E4D36)
@@ -67,6 +82,37 @@ fun SettingsContent(component: SettingsComponent) {
 
     val collapsingToolbarState = rememberCollapsingToolbarScaffoldState()
     var isPhoneVisible by remember { mutableStateOf(false) }
+    var showStatusMenu by remember { mutableStateOf(false) }
+    var statusAnchorBounds by remember { mutableStateOf<Rect?>(null) }
+    var topBarStatusAnchorBounds by remember { mutableStateOf<Rect?>(null) }
+    var headerStatusAnchorBounds by remember { mutableStateOf<Rect?>(null) }
+    val statusMenuTransitionState = remember { MutableTransitionState(false) }
+    val density = LocalDensity.current
+
+    LaunchedEffect(showStatusMenu) {
+        statusMenuTransitionState.targetState = showStatusMenu
+    }
+
+    var cachedStatusEmojiPath by remember(state.currentUser?.id) {
+        mutableStateOf(state.currentUser?.statusEmojiPath)
+    }
+
+    LaunchedEffect(state.currentUser?.id, state.currentUser?.statusEmojiPath) {
+        val statusEmojiPath = state.currentUser?.statusEmojiPath
+        if (!statusEmojiPath.isNullOrBlank()) {
+            cachedStatusEmojiPath = statusEmojiPath
+        }
+    }
+
+    val currentUser = remember(state.currentUser, cachedStatusEmojiPath) {
+        state.currentUser?.let { user ->
+            if (user.statusEmojiId != 0L && user.statusEmojiPath.isNullOrBlank() && !cachedStatusEmojiPath.isNullOrBlank()) {
+                user.copy(statusEmojiPath = cachedStatusEmojiPath)
+            } else {
+                user
+            }
+        }
+    }
 
     val clipboardManager = LocalClipboardManager.current
     val collapsedColor = MaterialTheme.colorScheme.surface
@@ -92,6 +138,10 @@ fun SettingsContent(component: SettingsComponent) {
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
         }
+    }
+
+    BackHandler(enabled = showStatusMenu) {
+        showStatusMenu = false
     }
 
     if (state.isQrVisible) {
@@ -283,6 +333,12 @@ fun SettingsContent(component: SettingsComponent) {
         }
     }
 
+    val statusMenuScrimAlpha by animateFloatAsState(
+        targetValue = if (statusMenuTransitionState.targetState) 0.18f else 0f,
+        animationSpec = tween(durationMillis = 220),
+        label = "StatusMenuScrimAlpha"
+    )
+
     val iconTint = lerp(
         start = MaterialTheme.colorScheme.onSurface,
         stop = MaterialTheme.colorScheme.onSurface,
@@ -298,7 +354,7 @@ fun SettingsContent(component: SettingsComponent) {
         topBar = {
             TopAppBar(
                 title = {
-                    state.currentUser?.let { userModel ->
+                    currentUser?.let { userModel ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -336,7 +392,13 @@ fun SettingsContent(component: SettingsComponent) {
                                 Spacer(modifier = Modifier.width(4.dp))
                                 StickerImage(
                                     path = userModel.statusEmojiPath,
-                                    modifier = Modifier.size(22.dp),
+                                    modifier = Modifier
+                                        .size(22.dp)
+                                        .onGloballyPositioned { topBarStatusAnchorBounds = it.boundsInRoot() }
+                                        .clickable(onClick = {
+                                            statusAnchorBounds = topBarStatusAnchorBounds ?: statusAnchorBounds
+                                            showStatusMenu = true
+                                        }),
                                     animate = false
                                 )
                             } else if (userModel.isPremium) {
@@ -344,7 +406,13 @@ fun SettingsContent(component: SettingsComponent) {
                                 Icon(
                                     imageVector = Icons.Default.Star,
                                     contentDescription = null,
-                                    modifier = Modifier.size(20.dp),
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .onGloballyPositioned { topBarStatusAnchorBounds = it.boundsInRoot() }
+                                        .clickable(onClick = {
+                                            statusAnchorBounds = topBarStatusAnchorBounds ?: statusAnchorBounds
+                                            showStatusMenu = true
+                                        }),
                                     tint = Color(0xFF31A6FD)
                                 )
                             }
@@ -468,7 +536,12 @@ fun SettingsContent(component: SettingsComponent) {
                                     start = sidePadding,
                                     end = sidePadding
                                 ),
-                                videoPlayerPool = component.videoPlayerPool
+                                videoPlayerPool = component.videoPlayerPool,
+                                onStatusClick = {
+                                    statusAnchorBounds = headerStatusAnchorBounds ?: statusAnchorBounds
+                                    showStatusMenu = true
+                                },
+                                onStatusBoundsChanged = { headerStatusAnchorBounds = it }
                             )
                         }
                     }
@@ -721,5 +794,104 @@ fun SettingsContent(component: SettingsComponent) {
                 }
             }
         )
+    }
+
+    if (statusMenuTransitionState.currentState || statusMenuTransitionState.targetState) {
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = statusMenuScrimAlpha))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) { showStatusMenu = false }
+        ) {
+            val menuHorizontalPadding = 16.dp
+            val menuAnchorOverlap = 12.dp
+            val menuBottomMargin = 8.dp
+            val menuWidth = (maxWidth - menuHorizontalPadding * 2).coerceAtLeast(280.dp)
+            val menuHeightLimit = 520.dp
+
+            val rootWidthPx = constraints.maxWidth.coerceAtLeast(1)
+            val rootHeightPx = constraints.maxHeight.coerceAtLeast(1)
+            val menuWidthPx = with(density) { menuWidth.roundToPx() }
+            val horizontalPaddingPx = with(density) { menuHorizontalPadding.roundToPx() }
+            val anchorOverlapPx = with(density) { menuAnchorOverlap.roundToPx() }
+            val menuBottomMarginPx = with(density) { menuBottomMargin.roundToPx() }
+            val minMenuVisibleHeightPx = with(density) { 220.dp.roundToPx() }
+
+            val statusBarTopPx = WindowInsets.statusBars.getTop(density)
+            val navigationBarBottomPx = WindowInsets.navigationBars.getBottom(density)
+            val minTopPx = statusBarTopPx + with(density) { 8.dp.roundToPx() }
+            val fallbackTopPx = statusBarTopPx + with(density) { 56.dp.roundToPx() }
+
+            val desiredTopPx = statusAnchorBounds
+                ?.let { it.bottom.roundToInt() - anchorOverlapPx }
+                ?: fallbackTopPx
+            val desiredLeftPx = statusAnchorBounds
+                ?.let { ((it.left + it.right) / 2f - menuWidthPx / 2f).roundToInt() }
+                ?: horizontalPaddingPx
+
+            val maxLeftPx = (rootWidthPx - menuWidthPx - horizontalPaddingPx).coerceAtLeast(horizontalPaddingPx)
+            val clampedLeftPx = desiredLeftPx.coerceIn(horizontalPaddingPx, maxLeftPx)
+
+            val maxTopPx = (
+                    rootHeightPx - navigationBarBottomPx - menuBottomMarginPx - minMenuVisibleHeightPx
+                    ).coerceAtLeast(minTopPx)
+            val clampedTopPx = desiredTopPx.coerceIn(minTopPx, maxTopPx)
+
+            val maxMenuHeightPx = (
+                    rootHeightPx - clampedTopPx - navigationBarBottomPx - menuBottomMarginPx
+                    ).coerceAtLeast(minMenuVisibleHeightPx)
+            val maxMenuHeightDp = with(density) { maxMenuHeightPx.toDp() }.coerceAtMost(menuHeightLimit)
+
+            AnimatedVisibility(
+                visibleState = statusMenuTransitionState,
+                enter = fadeIn(animationSpec = tween(180)) +
+                        slideInVertically(animationSpec = tween(260)) { -it / 5 } +
+                        scaleIn(
+                            animationSpec = tween(260),
+                            initialScale = 0.94f,
+                            transformOrigin = TransformOrigin(0.85f, 0f)
+                        ),
+                exit = fadeOut(animationSpec = tween(130)) +
+                        slideOutVertically(animationSpec = tween(170)) { -it / 6 } +
+                        scaleOut(
+                            animationSpec = tween(170),
+                            targetScale = 0.97f,
+                            transformOrigin = TransformOrigin(0.85f, 0f)
+                        ),
+                modifier = Modifier.offset { IntOffset(clampedLeftPx, clampedTopPx) }
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .width(menuWidth)
+                        .heightIn(max = maxMenuHeightDp)
+                        .clip(RoundedCornerShape(24.dp))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) { },
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    tonalElevation = 8.dp,
+                    shadowElevation = 12.dp
+                ) {
+                    EmojisGrid(
+                        onEmojiSelected = { _, sticker ->
+                            val customEmojiId = sticker?.customEmojiId
+                            if (sticker != null && customEmojiId != null) {
+                                if (!sticker.path.isNullOrBlank()) {
+                                    cachedStatusEmojiPath = sticker.path
+                                }
+                                component.onSetEmojiStatus(customEmojiId, sticker.path)
+                                showStatusMenu = false
+                            }
+                        },
+                        emojiOnlyMode = true,
+                        contentPadding = PaddingValues(bottom = 12.dp)
+                    )
+                }
+            }
+        }
     }
 }

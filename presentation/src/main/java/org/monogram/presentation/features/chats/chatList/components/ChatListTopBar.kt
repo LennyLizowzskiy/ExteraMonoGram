@@ -15,10 +15,13 @@ import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material.icons.rounded.ShieldMoon
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -44,9 +47,11 @@ fun ChatListTopBar(
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     onSearchToggle: () -> Unit,
-    onStatusClick: () -> Unit,
+    onStatusClick: (Rect?) -> Unit,
     onMenuClick: () -> Unit
 ) {
+    var statusAnchorBounds by remember { mutableStateOf<Rect?>(null) }
+
     AnimatedContent(
         targetState = isSearchActive,
         transitionSpec = {
@@ -127,7 +132,11 @@ fun ChatListTopBar(
 
                         if (!user?.statusEmojiPath.isNullOrBlank()) {
                             Spacer(modifier = Modifier.width(8.dp))
-                            Box(modifier = Modifier.clickable(onClick = onStatusClick)) {
+                            Box(
+                                modifier = Modifier
+                                    .onGloballyPositioned { statusAnchorBounds = it.boundsInRoot() }
+                                    .clickable { onStatusClick(statusAnchorBounds) }
+                            ) {
                                 StickerImage(
                                     path = user.statusEmojiPath,
                                     modifier = Modifier.size(28.dp),
@@ -140,7 +149,8 @@ fun ChatListTopBar(
                                 contentDescription = stringResource(R.string.telegram_premium_title),
                                 modifier = Modifier
                                     .size(22.dp)
-                                    .clickable(onClick = onStatusClick),
+                                    .onGloballyPositioned { statusAnchorBounds = it.boundsInRoot() }
+                                    .clickable { onStatusClick(statusAnchorBounds) },
                                 tint = Color(0xFF31A6FD)
                             )
                         }

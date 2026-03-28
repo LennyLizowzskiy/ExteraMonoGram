@@ -3,7 +3,9 @@ package org.monogram.presentation.features.chats.chatList
 import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -28,7 +30,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -48,8 +52,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Popup
-import androidx.compose.ui.window.PopupProperties
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.window.core.layout.WindowWidthSizeClass
@@ -80,6 +82,12 @@ fun ChatListContent(component: ChatListComponent) {
 
     var showAccountMenu by remember { mutableStateOf(false) }
     var showStatusMenu by remember { mutableStateOf(false) }
+    var statusAnchorBounds by remember { mutableStateOf<Rect?>(null) }
+    val statusMenuTransitionState = remember { MutableTransitionState(false) }
+
+    LaunchedEffect(showStatusMenu) {
+        statusMenuTransitionState.targetState = showStatusMenu
+    }
 
     val isPermissionRequested by component.appPreferences.isPermissionRequested.collectAsState()
     var showPermissionRequest by remember { mutableStateOf(!isPermissionRequested) }
@@ -396,54 +404,6 @@ fun ChatListContent(component: ChatListComponent) {
         )
     }
 
-    if (showStatusMenu) {
-        Popup(
-            onDismissRequest = { showStatusMenu = false },
-            properties = PopupProperties(focusable = true)
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) { showStatusMenu = false }
-            ) {
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .windowInsetsPadding(WindowInsets.statusBars)
-                        .padding(horizontal = 16.dp)
-                        .padding(top = 56.dp)
-                        .heightIn(max = 520.dp)
-                        .clip(RoundedCornerShape(24.dp))
-                        .align(Alignment.TopCenter)
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null
-                        ) { },
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    tonalElevation = 8.dp,
-                    shadowElevation = 8.dp
-                ) {
-                    EmojisGrid(
-                        onEmojiSelected = { _, sticker ->
-                            val customEmojiId = sticker?.customEmojiId
-                            if (sticker != null && customEmojiId != null) {
-                                if (!sticker.path.isNullOrBlank()) {
-                                    cachedStatusEmojiPath = sticker.path
-                                }
-                                component.onSetEmojiStatus(customEmojiId, sticker.path)
-                                showStatusMenu = false
-                            }
-                        },
-                        contentPadding = PaddingValues(bottom = 12.dp)
-                    )
-                }
-            }
-        }
-    }
-
     if (showPermissionRequest) {
         PermissionRequestSheet(onDismiss = {
             showPermissionRequest = false
@@ -462,6 +422,11 @@ fun ChatListContent(component: ChatListComponent) {
 
     val onChatClicked = remember(component) { { id: Long -> component.onChatClicked(id) } }
     val onChatLongClicked = remember(component) { { id: Long -> component.onChatLongClicked(id) } }
+    val statusMenuScrimAlpha by animateFloatAsState(
+        targetValue = if (statusMenuTransitionState.targetState) 0.18f else 0f,
+        animationSpec = tween(durationMillis = 220),
+        label = "ChatListStatusMenuScrimAlpha"
+    )
 
     Scaffold(
         containerColor = if (isTablet) Color.Transparent else MaterialTheme.colorScheme.surfaceContainerLow,
@@ -549,7 +514,10 @@ fun ChatListContent(component: ChatListComponent) {
                                 searchQuery = state.searchQuery,
                                 onSearchQueryChange = component::onSearchQueryChange,
                                 onSearchToggle = component::onSearchToggle,
-                                onStatusClick = { showStatusMenu = true },
+                                onStatusClick = { anchorBounds ->
+                                    statusAnchorBounds = anchorBounds ?: statusAnchorBounds
+                                    showStatusMenu = true
+                                },
                                 onMenuClick = { showAccountMenu = true },
                                 videoPlayerPool = component.videoPlayerPool
                             )
@@ -1155,6 +1123,105 @@ fun ChatListContent(component: ChatListComponent) {
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+
+    if (statusMenuTransitionState.currentState || statusMenuTransitionState.targetState) {
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = statusMenuScrimAlpha))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) { showStatusMenu = false }
+        ) {
+            val menuHorizontalPadding = 16.dp
+            val menuAnchorOverlap = 12.dp
+            val menuBottomMargin = 8.dp
+            val menuWidth = (maxWidth - menuHorizontalPadding * 2).coerceAtLeast(280.dp)
+            val menuHeightLimit = 520.dp
+
+            val rootWidthPx = constraints.maxWidth.coerceAtLeast(1)
+            val rootHeightPx = constraints.maxHeight.coerceAtLeast(1)
+            val menuWidthPx = with(density) { menuWidth.roundToPx() }
+            val horizontalPaddingPx = with(density) { menuHorizontalPadding.roundToPx() }
+            val anchorOverlapPx = with(density) { menuAnchorOverlap.roundToPx() }
+            val menuBottomMarginPx = with(density) { menuBottomMargin.roundToPx() }
+            val minMenuVisibleHeightPx = with(density) { 220.dp.roundToPx() }
+
+            val statusBarTopPx = WindowInsets.statusBars.getTop(density)
+            val navigationBarBottomPx = WindowInsets.navigationBars.getBottom(density)
+            val minTopPx = statusBarTopPx + with(density) { 8.dp.roundToPx() }
+            val fallbackTopPx = statusBarTopPx + with(density) { 56.dp.roundToPx() }
+
+            val desiredTopPx = statusAnchorBounds
+                ?.let { it.bottom.roundToInt() - anchorOverlapPx }
+                ?: fallbackTopPx
+            val desiredLeftPx = statusAnchorBounds
+                ?.let { ((it.left + it.right) / 2f - menuWidthPx / 2f).roundToInt() }
+                ?: horizontalPaddingPx
+
+            val maxLeftPx = (rootWidthPx - menuWidthPx - horizontalPaddingPx).coerceAtLeast(horizontalPaddingPx)
+            val clampedLeftPx = desiredLeftPx.coerceIn(horizontalPaddingPx, maxLeftPx)
+
+            val maxTopPx = (
+                    rootHeightPx - navigationBarBottomPx - menuBottomMarginPx - minMenuVisibleHeightPx
+                    ).coerceAtLeast(minTopPx)
+            val clampedTopPx = desiredTopPx.coerceIn(minTopPx, maxTopPx)
+
+            val maxMenuHeightPx = (
+                    rootHeightPx - clampedTopPx - navigationBarBottomPx - menuBottomMarginPx
+                    ).coerceAtLeast(minMenuVisibleHeightPx)
+            val maxMenuHeightDp = with(density) { maxMenuHeightPx.toDp() }.coerceAtMost(menuHeightLimit)
+
+            AnimatedVisibility(
+                visibleState = statusMenuTransitionState,
+                enter = fadeIn(animationSpec = tween(180)) +
+                        slideInVertically(animationSpec = tween(260)) { -it / 5 } +
+                        scaleIn(
+                            animationSpec = tween(260),
+                            initialScale = 0.94f,
+                            transformOrigin = TransformOrigin(0.85f, 0f)
+                        ),
+                exit = fadeOut(animationSpec = tween(130)) +
+                        slideOutVertically(animationSpec = tween(170)) { -it / 6 } +
+                        scaleOut(
+                            animationSpec = tween(170),
+                            targetScale = 0.97f,
+                            transformOrigin = TransformOrigin(0.85f, 0f)
+                        ),
+                modifier = Modifier.offset { IntOffset(clampedLeftPx, clampedTopPx) }
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .width(menuWidth)
+                        .heightIn(max = maxMenuHeightDp)
+                        .clip(RoundedCornerShape(24.dp))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) { },
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    tonalElevation = 8.dp,
+                    shadowElevation = 12.dp
+                ) {
+                    EmojisGrid(
+                        onEmojiSelected = { _, sticker ->
+                            val customEmojiId = sticker?.customEmojiId
+                            if (sticker != null && customEmojiId != null) {
+                                if (!sticker.path.isNullOrBlank()) {
+                                    cachedStatusEmojiPath = sticker.path
+                                }
+                                component.onSetEmojiStatus(customEmojiId, sticker.path)
+                                showStatusMenu = false
+                            }
+                        },
+                        emojiOnlyMode = true,
+                        contentPadding = PaddingValues(bottom = 12.dp)
+                    )
                 }
             }
         }

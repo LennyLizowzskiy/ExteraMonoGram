@@ -1,6 +1,7 @@
 package org.monogram.presentation.core.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -15,9 +16,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -34,7 +38,9 @@ fun UserProfileHeader(
     contentPadding: PaddingValues,
     currentRadius: Dp,
     alpha: Float = 1f,
-    videoPlayerPool: VideoPlayerPool
+    videoPlayerPool: VideoPlayerPool,
+    onStatusClick: (() -> Unit)? = null,
+    onStatusBoundsChanged: ((Rect) -> Unit)? = null
 ) {
     val capHeight = 24.dp
 
@@ -121,7 +127,22 @@ fun UserProfileHeader(
                     Spacer(modifier = Modifier.width(6.dp))
                     StickerImage(
                         path = userModel.statusEmojiPath,
-                        modifier = Modifier.size(26.dp),
+                        modifier = Modifier
+                            .size(26.dp)
+                            .then(
+                                if (onStatusBoundsChanged != null) {
+                                    Modifier.onGloballyPositioned { onStatusBoundsChanged(it.boundsInRoot()) }
+                                } else {
+                                    Modifier
+                                }
+                            )
+                            .then(
+                                if (onStatusClick != null) {
+                                    Modifier.clickable(onClick = onStatusClick)
+                                } else {
+                                    Modifier
+                                }
+                            ),
                         animate = false
                     )
                 } else if (userModel.isPremium) {
@@ -129,7 +150,22 @@ fun UserProfileHeader(
                     Icon(
                         imageVector = Icons.Default.Star,
                         contentDescription = null,
-                        modifier = Modifier.size(28.dp),
+                        modifier = Modifier
+                            .size(28.dp)
+                            .then(
+                                if (onStatusBoundsChanged != null) {
+                                    Modifier.onGloballyPositioned { onStatusBoundsChanged(it.boundsInRoot()) }
+                                } else {
+                                    Modifier
+                                }
+                            )
+                            .then(
+                                if (onStatusClick != null) {
+                                    Modifier.clickable(onClick = onStatusClick)
+                                } else {
+                                    Modifier
+                                }
+                            ),
                         tint = Color(0xFF31A6FD)
                     )
                 }

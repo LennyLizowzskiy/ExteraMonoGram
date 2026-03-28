@@ -4,6 +4,7 @@ import android.os.Build
 import com.arkivanov.decompose.value.MutableValue
 import com.arkivanov.decompose.value.Value
 import com.arkivanov.decompose.value.update
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -188,5 +189,23 @@ class DefaultSettingsComponent(
 
     override fun onMoreOptionsDismissed() {
         _state.update { it.copy(isMoreOptionsVisible = false) }
+    }
+
+    override fun onSetEmojiStatus(customEmojiId: Long, statusPath: String?) {
+        _state.update { state ->
+            val user = state.currentUser ?: return@update state
+            state.copy(
+                currentUser = user.copy(
+                    statusEmojiId = customEmojiId,
+                    statusEmojiPath = statusPath ?: user.statusEmojiPath
+                )
+            )
+        }
+
+        scope.launch(Dispatchers.IO) {
+            runCatching {
+                repository.setEmojiStatus(customEmojiId)
+            }
+        }
     }
 }
