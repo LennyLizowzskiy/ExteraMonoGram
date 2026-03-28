@@ -18,6 +18,36 @@ interface MessageDao {
     @Query("SELECT * FROM messages WHERE chatId = :chatId AND id > :fromMessageId ORDER BY date ASC LIMIT :limit")
     suspend fun getMessagesNewer(chatId: Long, fromMessageId: Long, limit: Int): List<MessageEntity>
 
+    @Query("SELECT * FROM messages WHERE chatId = :chatId ORDER BY date DESC LIMIT :limit")
+    suspend fun getLatestMessages(chatId: Long, limit: Int): List<MessageEntity>
+
+    @Query("UPDATE messages SET isRead = 1 WHERE chatId = :chatId AND id <= :upToMessageId AND isRead = 0")
+    suspend fun markAsRead(chatId: Long, upToMessageId: Long)
+
+    @Query("UPDATE messages SET content = :content, contentType = :contentType, contentMeta = :contentMeta, editDate = :editDate WHERE id = :messageId")
+    suspend fun updateContent(
+        messageId: Long,
+        content: String,
+        contentType: String,
+        contentMeta: String?,
+        editDate: Int
+    )
+
+    @Query("UPDATE messages SET viewCount = :viewCount, forwardCount = :forwardCount, replyCount = :replyCount WHERE id = :messageId")
+    suspend fun updateInteractionInfo(messageId: Long, viewCount: Int, forwardCount: Int, replyCount: Int)
+
+    @Query(
+        """
+        DELETE FROM messages
+        WHERE chatId = :chatId
+          AND id NOT IN (
+            SELECT id FROM messages WHERE chatId = :chatId ORDER BY date DESC LIMIT :keepCount
+          )
+          AND createdAt < :olderThan
+        """
+    )
+    suspend fun cleanupChat(chatId: Long, keepCount: Int, olderThan: Long)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertMessage(message: MessageEntity)
 

@@ -46,6 +46,17 @@ internal fun DefaultChatComponent.loadAllPinnedMessages() {
     }
 }
 
+internal fun DefaultChatComponent.loadScheduledMessages() {
+    scope.launch {
+        try {
+            val scheduledMessages = repositoryMessage.getScheduledMessages(chatId)
+            _state.update { it.copy(scheduledMessages = scheduledMessages) }
+        } catch (e: Exception) {
+            Log.e("DefaultChatComponent", "Error loading scheduled messages", e)
+        }
+    }
+}
+
 internal fun DefaultChatComponent.setupPinnedMessageCollector() {
     repositoryMessage.pinnedMessageFlow
         .onEach { cId ->

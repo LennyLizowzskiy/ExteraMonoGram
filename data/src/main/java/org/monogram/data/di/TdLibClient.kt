@@ -80,11 +80,6 @@ class TdLibClient(private val context: Context) {
                 return result as T
             }
 
-            if (result.code == 404 && function is TdApi.GetChatPinnedMessage) {
-                @Suppress("UNCHECKED_CAST", "CAST_NEVER_SUCCEEDS")
-                return null as T
-            }
-
             if (result.code == 429 && retries < 3) {
                 retries++
                 val retryAfterMs = parseRetryAfterMs(result.message)
@@ -93,7 +88,14 @@ class TdLibClient(private val context: Context) {
                 continue
             }
 
-            if (result.code != 404) {
+            val isExpectedUserFullInfoMiss =
+                function is TdApi.GetUserFullInfo &&
+                        result.code == 400 &&
+                        result.message.contains("user not found", ignoreCase = true)
+
+            if (isExpectedUserFullInfoMiss) {
+                Log.w(TAG, "User not found in sendSuspend $function: ${result.code} ${result.message}")
+            } else if (result.code != 404) {
                 Log.e(TAG, "Error in sendSuspend $function: ${result.code} ${result.message}")
             } else {
                 Log.w(TAG, "Not found in sendSuspend $function: ${result.message}")

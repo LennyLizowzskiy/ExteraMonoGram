@@ -19,6 +19,7 @@ class ChatMapper(private val stringProvider: StringProvider) {
         isOnline: Boolean,
         userStatus: String,
         isVerified: Boolean,
+        isSponsor: Boolean,
         isForum: Boolean,
         isBot: Boolean,
         memberCount: Int,
@@ -114,7 +115,8 @@ class ChatMapper(private val stringProvider: StringProvider) {
                 else -> null
             },
             blockList = chat.blockList != null,
-            isVerified = isVerified,
+            isVerified = isVerified || isForcedVerifiedChat(chat.id),
+            isSponsor = isSponsor,
             viewAsTopics = chat.viewAsTopics,
             isForum = isForum,
             isBot = isBot,
@@ -178,7 +180,8 @@ class ChatMapper(private val stringProvider: StringProvider) {
             isOnline = entity.isOnline,
             typingAction = entity.typingAction,
             draftMessage = entity.draftMessage,
-            isVerified = entity.isVerified,
+            isVerified = entity.isVerified || isForcedVerifiedChat(entity.id),
+            isSponsor = entity.isSponsor || (entity.privateUserId != 0L && isSponsoredUser(entity.privateUserId)),
             viewAsTopics = entity.viewAsTopics,
             isForum = entity.isForum,
             isBot = entity.isBot,
@@ -255,7 +258,8 @@ class ChatMapper(private val stringProvider: StringProvider) {
             isOnline = domain.isOnline,
             typingAction = domain.typingAction,
             draftMessage = domain.draftMessage,
-            isVerified = domain.isVerified,
+            isVerified = domain.isVerified || isForcedVerifiedChat(domain.id),
+            isSponsor = domain.isSponsor,
             viewAsTopics = domain.viewAsTopics,
             isForum = domain.isForum,
             isBot = domain.isBot,
@@ -278,6 +282,8 @@ class ChatMapper(private val stringProvider: StringProvider) {
             permissionCanInviteUsers = domain.permissions.canInviteUsers,
             permissionCanPinMessages = domain.permissions.canPinMessages,
             permissionCanCreateTopics = domain.permissions.canCreateTopics,
+            lastMessageContentType = "text",
+            lastMessageSenderName = "",
             createdAt = System.currentTimeMillis()
         )
     }
@@ -320,12 +326,35 @@ class ChatMapper(private val stringProvider: StringProvider) {
             }
         }
         val encodedPositions = encodePositions(chat.positions)
+        val (lastMessageContentType, lastMessageSenderName) = chat.lastMessage?.let { message ->
+            val type = when (message.content) {
+                is TdApi.MessageText -> "text"
+                is TdApi.MessagePhoto -> "photo"
+                is TdApi.MessageVideo -> "video"
+                is TdApi.MessageVoiceNote -> "voice"
+                is TdApi.MessageVideoNote -> "video_note"
+                is TdApi.MessageSticker -> "sticker"
+                is TdApi.MessageDocument -> "document"
+                is TdApi.MessageAudio -> "audio"
+                is TdApi.MessageAnimation -> "gif"
+                is TdApi.MessageContact -> "contact"
+                is TdApi.MessagePoll -> "poll"
+                is TdApi.MessageLocation -> "location"
+                is TdApi.MessageCall -> "call"
+                else -> "message"
+            }
+            val sender = ""
+            type to sender
+        } ?: ("text" to "")
+
         return mapToEntity(domain).copy(
             privateUserId = privateUserId,
             basicGroupId = basicGroupId,
             supergroupId = supergroupId,
             secretChatId = secretChatId,
-            positionsCache = encodedPositions
+            positionsCache = encodedPositions,
+            lastMessageContentType = lastMessageContentType,
+            lastMessageSenderName = lastMessageSenderName
         )
     }
 
@@ -379,10 +408,29 @@ class ChatMapper(private val stringProvider: StringProvider) {
             }
         }
 
+        if (entities.any { it.type is MessageEntityType.Spoiler }) {
+            txt = maskSpoilerText(txt, entities)
+        }
+
         val date = lastMsg.date
         val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
         val time = if (date > 0) timeFormat.format(Date(date.toLong() * 1000)) else ""
         return Triple(txt, entities, time)
+    }
+
+    private fun maskSpoilerText(text: String, entities: List<MessageEntity>): String {
+        if (text.isEmpty()) return text
+        val chars = text.toCharArray()
+        entities.forEach { entity ->
+            if (entity.type is MessageEntityType.Spoiler) {
+                val start = entity.offset.coerceIn(0, chars.size)
+                val end = (entity.offset + entity.length).coerceIn(start, chars.size)
+                for (i in start until end) {
+                    chars[i] = '•'
+                }
+            }
+        }
+        return String(chars)
     }
 
     private fun mapEntity(entity: TdApi.TextEntity): MessageEntity {

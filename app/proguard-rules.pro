@@ -9,7 +9,6 @@
 }
 
 -keepattributes SourceFile,LineNumberTable
--renamesourcefileattribute SourceFile
 
 -keepclassmembers class * extends androidx.compose.runtime.Composer { *; }
 -keep class androidx.compose.runtime.Recomposer { *; }

@@ -162,6 +162,7 @@
     <string name="action_clear">Clear</string>
     <string name="cd_muted">Muted</string>
     <string name="cd_verified">Verified</string>
+    <string name="cd_sponsor">Sponsor</string>
     <string name="menu_unmute">Unmute</string>
     <string name="menu_mute">Mute</string>
     <string name="menu_filter_ads">Filter Ads</string>
@@ -326,6 +327,9 @@
     <string name="support_monogram_description">MonoGram is a free and open-source project. Your support helps us to
         keep it alive and develop new features.
     </string>
+    <string name="sponsor_sheet_description">The sponsor badge with a heart is available from Advanced support level or
+        an equivalent contribution of 150 RUB (about $1.70).
+    </string>
     <string name="action_support_boosty">Support on Boosty</string>
     <string name="action_maybe_later">Maybe later</string>
     <string name="cd_edit_profile">Edit Profile</string>
@@ -358,9 +362,15 @@
     <string name="telegram_premium_title">Telegram Premium</string>
     <string name="telegram_premium_subtitle">Unlock exclusive features</string>
     <string name="support_monogram_subtitle_settings">Help us develop the project</string>
+    <string name="sponsor_profile_title">Supports MonoGram</string>
+    <string name="sponsor_profile_subtitle">This user supports the project and helps us keep improving it</string>
     <string name="about_subtitle_settings">MonoGram version and info</string>
     <string name="debug_title">Debug</string>
     <string name="debug_subtitle">Debug options</string>
+    <string name="debug_sponsor_sheet_title">Show sponsor sheet</string>
+    <string name="debug_sponsor_sheet_subtitle">Open sponsor info bottom sheet</string>
+    <string name="debug_force_sponsor_sync_title">Force sponsor sync</string>
+    <string name="debug_force_sponsor_sync_subtitle">Fetch sponsor IDs from channel now</string>
     <string name="log_out_title">Log Out</string>
     <string name="log_out_subtitle">Disconnect from account</string>
 
@@ -949,6 +959,47 @@
     <string name="action_send_items_count">Send %1$d items</string>
     <string name="action_send_media">Send media</string>
     <string name="action_cancel">Cancel</string>
+    <string name="action_copy">Copy</string>
+    <string name="action_paste">Paste</string>
+    <string name="action_cut">Cut</string>
+    <string name="action_select_all">Select all</string>
+    <string name="action_apply">Apply</string>
+    <string name="action_done">Done</string>
+    <string name="action_refresh">Refresh</string>
+    <string name="action_open_fullscreen_editor">Fullscreen editor</string>
+    <string name="fullscreen_editor_title">Editor</string>
+    <string name="action_send_silent">Send silently</string>
+    <string name="action_schedule_message">Schedule message</string>
+    <string name="action_scheduled_messages">Scheduled messages</string>
+    <string name="action_scheduled_messages_count">Scheduled messages (%1$d)</string>
+    <string name="scheduled_messages_empty">No scheduled messages yet</string>
+    <string name="scheduled_messages_summary_count">Total scheduled: %1$d</string>
+    <string name="scheduled_messages_summary_next">Next send: %1$s</string>
+    <string name="scheduled_messages_summary_editable">Editable now: %1$d</string>
+    <string name="scheduled_message_id">ID: %1$d</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_send_now">Send</string>
+    <string name="action_delete_message">Delete</string>
+    <string name="fullscreen_editor_meta">%1$d chars • %2$d format blocks</string>
+    <string name="fullscreen_editor_blocks">%1$d format blocks</string>
+    <string name="fullscreen_editor_hint">Select text to apply rich formatting like in Telegram</string>
+    <string name="message_length_counter">%1$d/%2$d</string>
+
+    <string name="rich_text_bold">Bold</string>
+    <string name="rich_text_italic">Italic</string>
+    <string name="rich_text_underline">Underline</string>
+    <string name="rich_text_strikethrough">Strikethrough</string>
+    <string name="rich_text_spoiler">Spoiler</string>
+    <string name="rich_text_code">Code</string>
+    <string name="rich_text_pre">Monospace</string>
+    <string name="rich_text_link">Link</string>
+    <string name="rich_text_mention">Mention</string>
+    <string name="rich_text_emoji">Emoji</string>
+    <string name="rich_text_clear">Clear</string>
+    <string name="rich_text_link_title">Add link</string>
+    <string name="rich_text_link_hint">URL</string>
+    <string name="rich_text_code_language_title">Code language</string>
+    <string name="rich_text_code_language_hint">Language (e.g. kotlin)</string>
 
     <!-- Bot -->
     <string name="bot_commands">Commands</string>
@@ -1682,4 +1733,16 @@
 
     <string name="chat_theme_editor_preset_nord_name">Nord</string>
     <string name="chat_theme_editor_preset_nord_description">Cool northern blues with a calm, professional visual balance.</string>
+    <!-- Circular recorder -->
+    <string name="recorder_permissions_required">Camera and microphone permissions are required</string>
+    <string name="recorder_processing">Processing...</string>
+    <string name="recorder_processing_error">Processing error: %1$s</string>
+    <string name="recorder_close_cd">Close recorder</string>
+    <string name="recorder_switch_cd">Switch camera</string>
+    <string name="recorder_done_cd">Finish recording</string>
+    <string name="recorder_rec_label">REC</string>
+    <string name="recorder_ready_label">READY</string>
+    <string name="recorder_time_format">Time: %1$s</string>
+    <string name="recorder_zoom_format">Zoom: %1$.1fx (range %2$.1fx - %3$.1fx)</string>
+    <string name="recorder_cancel">Cancel</string>
 </resources>

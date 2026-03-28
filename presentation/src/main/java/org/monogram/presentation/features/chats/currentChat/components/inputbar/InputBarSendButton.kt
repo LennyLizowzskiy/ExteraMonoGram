@@ -26,13 +26,11 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
-import org.monogram.domain.models.MessageEntity
 import org.monogram.domain.models.MessageModel
-import org.monogram.domain.models.StickerModel
+import org.monogram.domain.models.MessageSendOptions
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -40,26 +38,23 @@ fun InputBarSendButton(
     textValue: TextFieldValue,
     editingMessage: MessageModel?,
     pendingMediaPaths: List<String>,
+    isOverCharLimit: Boolean,
     canWriteText: Boolean,
     canSendVoice: Boolean,
     canSendMedia: Boolean,
     isVideoMessageMode: Boolean,
-    knownCustomEmojis: Map<Long, StickerModel>,
-    onSend: (String, List<MessageEntity>) -> Unit,
-    onSaveEdit: (String, List<MessageEntity>) -> Unit,
-    onSendMedia: (List<String>, String) -> Unit,
+    onSendWithOptions: (MessageSendOptions) -> Unit,
+    onShowSendOptionsMenu: () -> Unit,
     onCameraClick: () -> Unit,
     onVideoModeToggle: () -> Unit,
-    onTextValueChange: (TextFieldValue) -> Unit,
-    onKnownEmojisClear: () -> Unit,
     onVoiceStart: () -> Unit = {},
     onVoiceStop: (Boolean) -> Unit = { _ -> },
     onVoiceLock: () -> Unit = {}
 ) {
     val haptic = LocalHapticFeedback.current
-    LocalDensity.current
     val isTextEmpty = textValue.text.isBlank()
-    val isSendEnabled = (!isTextEmpty || editingMessage != null || pendingMediaPaths.isNotEmpty()) && canWriteText
+    val isSendEnabled =
+        (!isTextEmpty || editingMessage != null || pendingMediaPaths.isNotEmpty()) && canWriteText && !isOverCharLimit
 
     var isVoiceRecordingActive by remember { mutableStateOf(false) }
     val isRecordingMode = isTextEmpty && editingMessage == null && pendingMediaPaths.isEmpty() && canSendVoice
@@ -142,19 +137,16 @@ fun InputBarSendButton(
                     } else {
                         Modifier.combinedClickable(
                             onClick = {
-                                if (pendingMediaPaths.isNotEmpty() && canSendMedia) {
-                                    onSendMedia(pendingMediaPaths, textValue.text)
-                                    onTextValueChange(TextFieldValue(""))
-                                } else if (editingMessage != null && canWriteText) {
-                                    if (!isTextEmpty) {
-                                        val entities = extractEntities(textValue.annotatedString, knownCustomEmojis)
-                                        onSaveEdit(textValue.text, entities)
-                                    }
-                                } else if (canWriteText && !isTextEmpty) {
-                                    val entities = extractEntities(textValue.annotatedString, knownCustomEmojis)
-                                    onSend(textValue.text, entities)
-                                    onTextValueChange(TextFieldValue(""))
-                                    onKnownEmojisClear()
+                                if (!isOverCharLimit) {
+                                    onSendWithOptions(MessageSendOptions())
+                                }
+                            },
+                            onLongClick = {
+                                val canShowOptions = editingMessage == null && canWriteText &&
+                                        (!isTextEmpty || (pendingMediaPaths.isNotEmpty() && canSendMedia)) &&
+                                        !isOverCharLimit
+                                if (canShowOptions) {
+                                    onShowSendOptionsMenu()
                                 }
                             }
                         )

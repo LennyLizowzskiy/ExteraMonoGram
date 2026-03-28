@@ -4,6 +4,7 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.outlined.EmojiEmotions
@@ -30,6 +31,7 @@ import org.monogram.presentation.R
 fun InputTextFieldContainer(
     textValue: TextFieldValue,
     onValueChange: (TextFieldValue) -> Unit,
+    onRichTextValueChange: (TextFieldValue) -> Unit = onValueChange,
     isBot: Boolean,
     botMenuButton: BotMenuButtonModel,
     botCommands: List<BotCommandModel>,
@@ -44,6 +46,7 @@ fun InputTextFieldContainer(
     focusRequester: FocusRequester,
     pendingMediaPaths: List<String>,
     onFocus: () -> Unit = {},
+    onOpenFullScreenEditor: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -84,6 +87,7 @@ fun InputTextFieldContainer(
             InputTextField(
                 textValue = textValue,
                 onValueChange = onValueChange,
+                onRichTextValueChange = onRichTextValueChange,
                 canWriteText = canWriteText,
                 knownCustomEmojis = knownCustomEmojis,
                 emojiFontFamily = emojiFontFamily,
@@ -92,6 +96,19 @@ fun InputTextFieldContainer(
                 onFocus = onFocus,
                 modifier = Modifier.weight(1f)
             )
+
+            if (canWriteText) {
+                IconButton(
+                    onClick = onOpenFullScreenEditor,
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = stringResource(R.string.action_open_fullscreen_editor),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
     }
 }

@@ -45,6 +45,14 @@ private suspend fun DefaultChatComponent.updateMessagesUnsafe(
     }
 
     _state.update { state ->
+        if (filteredNewMessages.isEmpty()) {
+            return@update if (replace && state.messages.any { it.sendingState is MessageSendingState.Pending }) {
+                state.copy(messages = state.messages.filter { it.sendingState is MessageSendingState.Pending })
+            } else {
+                state
+            }
+        }
+
         val currentList = if (replace) {
             state.messages.filter { it.sendingState is MessageSendingState.Pending }
         } else {
@@ -53,9 +61,19 @@ private suspend fun DefaultChatComponent.updateMessagesUnsafe(
 
         val isComments = state.rootMessage != null
 
-        val messageMap = currentList.associateBy { it.id }.toMutableMap()
+        val messageMap = LinkedHashMap<Long, MessageModel>(currentList.size + filteredNewMessages.size)
+        currentList.forEach { messageMap[it.id] = it }
+
+        var hasChanges = replace
         filteredNewMessages.forEach { msg ->
-            messageMap[msg.id] = msg
+            val previous = messageMap.put(msg.id, msg)
+            if (previous != msg) {
+                hasChanges = true
+            }
+        }
+
+        if (!hasChanges) {
+            return@update state
         }
 
         val mergedMessages = messageMap.values.let {
@@ -66,7 +84,7 @@ private suspend fun DefaultChatComponent.updateMessagesUnsafe(
             }
         }
 
-        state.copy(messages = mergedMessages)
+        if (mergedMessages == state.messages) state else state.copy(messages = mergedMessages)
     }
 }
 
@@ -145,17 +163,43 @@ internal suspend fun DefaultChatComponent.loadComments(threadId: Long) {
 private suspend fun DefaultChatComponent.loadBottomMessages(threadId: Long?) {
     lastLoadedOlderId = 0L
     lastLoadedNewerId = 0L
-    val messages = repositoryMessage.getMessagesOlder(chatId, 0, PAGE_SIZE, threadId)
-    val isOldestLoaded = messages.size < PAGE_SIZE
+
+    var hasCachedPreview = false
+    val cachedMessages = repositoryMessage.getCachedMessages(chatId, PAGE_SIZE)
+    if (cachedMessages.isNotEmpty()) {
+        hasCachedPreview = true
+        _state.update {
+            it.copy(
+                isAtBottom = true,
+                isLatestLoaded = false,
+                isOldestLoaded = false,
+                scrollToMessageId = null
+            )
+        }
+        updateMessages(cachedMessages, replace = true)
+    }
+
+    val olderPage = repositoryMessage.getMessagesOlder(chatId, 0, PAGE_SIZE, threadId)
+    val messages = olderPage.messages
+    val isRemoteSameAsCachedPreview = hasCachedPreview && cachedMessages.isNotEmpty() &&
+            messages.size == cachedMessages.size &&
+            messages.zip(cachedMessages).all { (remote, cached) -> remote.id == cached.id }
+
+    val isOldestLoaded = if (isRemoteSameAsCachedPreview) {
+        false
+    } else {
+        olderPage.reachedOldest
+    }
+
     _state.update {
         it.copy(
             isAtBottom = true,
-            isLatestLoaded = true,
+            isLatestLoaded = !isRemoteSameAsCachedPreview,
             isOldestLoaded = isOldestLoaded,
             scrollToMessageId = null
         )
     }
-    updateMessages(messages, replace = true)
+    updateMessages(messages, replace = !hasCachedPreview)
     if (!isOldestLoaded) {
         delay(100)
         loadMoreMessages()
@@ -224,7 +268,8 @@ internal fun DefaultChatComponent.loadMoreMessages() {
                 attempts++
 
                 val beforeSize = _state.value.messages.size
-                val olderMessages = repositoryMessage.getMessagesOlder(chatId, currentAnchorId, PAGE_SIZE, threadId)
+                val olderPage = repositoryMessage.getMessagesOlder(chatId, currentAnchorId, PAGE_SIZE, threadId)
+                val olderMessages = olderPage.messages
 
                 val nextOlderAnchorId = olderMessages
                     .asSequence()
@@ -241,11 +286,15 @@ internal fun DefaultChatComponent.loadMoreMessages() {
                 val afterSize = _state.value.messages.size
                 val listGrew = afterSize > beforeSize
 
-                isOldestLoaded = olderMessages.isEmpty() || !hasOlderProgress
+                isOldestLoaded = olderPage.reachedOldest || (olderPage.isRemote && !hasOlderProgress)
 
                 if (hasOlderProgress) {
                     lastLoadedOlderId = nextOlderAnchorId
                     currentAnchorId = nextOlderAnchorId
+                }
+
+                if (!olderPage.isRemote && olderMessages.isEmpty()) {
+                    break
                 }
 
                 if (isOldestLoaded || listGrew) break

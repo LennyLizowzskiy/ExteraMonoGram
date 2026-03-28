@@ -2,6 +2,7 @@ package org.monogram.presentation.features.chats.currentChat.impl
 
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import org.monogram.domain.models.MessageEntity
 import org.monogram.domain.models.MessageModel
 import org.monogram.domain.models.MessageReactionModel
@@ -34,7 +35,9 @@ internal fun DefaultChatComponent.handleSaveEditedMessage(text: String, entities
 
 internal fun DefaultChatComponent.handleDraftChange(text: String) {
     _state.update { it.copy(draftText = text) }
-    scope.launch {
+    draftSaveJob?.cancel()
+    draftSaveJob = scope.launch {
+        delay(200)
         val currentState = _state.value
         val threadId = currentState.currentTopicId
         repositoryMessage.saveChatDraft(chatId, text, currentState.replyMessage?.id, threadId)
@@ -118,4 +121,11 @@ internal fun DefaultChatComponent.handleUnpinMessage(message: MessageModel) {
 
 internal fun DefaultChatComponent.handleClearMessages() {
     chatsListRepository.clearChatHistory(chatId, false)
+}
+
+internal fun DefaultChatComponent.handleSendScheduledNow(message: MessageModel) {
+    scope.launch {
+        repositoryMessage.sendScheduledNow(chatId, message.id)
+        loadScheduledMessages()
+    }
 }

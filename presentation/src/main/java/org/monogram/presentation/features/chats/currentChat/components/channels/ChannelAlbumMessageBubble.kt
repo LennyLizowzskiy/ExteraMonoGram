@@ -235,7 +235,9 @@ fun ChannelAlbumMessageBubble(
                             ),
                             color = MaterialTheme.colorScheme.onSurface,
                             onSpoilerClick = { index ->
-                                if (!revealedSpoilers.contains(index)) {
+                                if (revealedSpoilers.contains(index)) {
+                                    revealedSpoilers.remove(index)
+                                } else {
                                     revealedSpoilers.add(index)
                                 }
                             },
@@ -442,7 +444,9 @@ fun ChannelDocumentAlbumBubble(
                         modifier = Modifier.padding(vertical = 4.dp),
                         entities = content.entities,
                         onSpoilerClick = { index ->
-                            if (!revealedSpoilers.contains(index)) {
+                            if (revealedSpoilers.contains(index)) {
+                                revealedSpoilers.remove(index)
+                            } else {
                                 revealedSpoilers.add(index)
                             }
                         },
@@ -646,7 +650,9 @@ fun ChannelAudioAlbumBubble(
                         modifier = Modifier.padding(vertical = 4.dp),
                         entities = content.entities,
                         onSpoilerClick = { index ->
-                            if (!revealedSpoilers.contains(index)) {
+                            if (revealedSpoilers.contains(index)) {
+                                revealedSpoilers.remove(index)
+                            } else {
                                 revealedSpoilers.add(index)
                             }
                         },

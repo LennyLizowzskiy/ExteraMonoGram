@@ -321,6 +321,9 @@
     <string name="qr_code_title">二维码</string>
     <string name="action_share">分享</string>
     <string name="support_monogram_description">MonoGram 是一个免费且开源的项目。您的支持有助于我们维持项目并开发新功能。</string>
+    <string name="sponsor_sheet_description">带爱心的赞助者徽章可通过 Advanced 支持等级获得，或通过等值于 150 卢布（约
+        $1.70）的支持获得。
+    </string>
     <string name="action_support_boosty">在 Boosty 上支持</string>
     <string name="action_maybe_later">稍后再说</string>
     <string name="cd_edit_profile">编辑个人资料</string>
@@ -353,9 +356,15 @@
     <string name="telegram_premium_title">Telegram Premium</string>
     <string name="telegram_premium_subtitle">解锁专属功能</string>
     <string name="support_monogram_subtitle_settings">帮助我们开发项目</string>
+    <string name="sponsor_profile_title">支持了 MonoGram</string>
+    <string name="sponsor_profile_subtitle">该用户正在支持项目，帮助我们持续改进</string>
     <string name="about_subtitle_settings">MonoGram 版本和信息</string>
     <string name="debug_title">调试</string>
     <string name="debug_subtitle">调试选项</string>
+    <string name="debug_sponsor_sheet_title">显示赞助者弹窗</string>
+    <string name="debug_sponsor_sheet_subtitle">打开赞助者信息底部弹窗</string>
+    <string name="debug_force_sponsor_sync_title">强制同步赞助者</string>
+    <string name="debug_force_sponsor_sync_subtitle">立即从频道拉取赞助者 ID</string>
     <string name="log_out_title">退出登录</string>
     <string name="log_out_subtitle">断开账号连接</string>
 
@@ -908,6 +917,48 @@
     <string name="action_send_items_count">发送 %1$d 个项目</string>
     <string name="action_send_media">发送媒体</string>
     <string name="action_cancel">取消</string>
+    <string name="action_copy">复制</string>
+    <string name="action_paste">粘贴</string>
+    <string name="action_cut">剪切</string>
+    <string name="action_select_all">全选</string>
+    <string name="action_apply">应用</string>
+    <string name="action_done">完成</string>
+    <string name="action_refresh">刷新</string>
+    <string name="action_open_fullscreen_editor">全屏编辑器</string>
+    <string name="fullscreen_editor_title">编辑器</string>
+    <string name="action_send_silent">静默发送</string>
+    <string name="action_schedule_message">定时发送消息</string>
+    <string name="action_scheduled_messages">定时消息</string>
+    <string name="action_scheduled_messages_count">定时消息（%1$d）</string>
+    <string name="scheduled_messages_empty">暂无定时消息</string>
+    <string name="scheduled_messages_summary_count">定时总数：%1$d</string>
+    <string name="scheduled_messages_summary_next">下次发送：%1$s</string>
+    <string name="scheduled_messages_summary_editable">可编辑：%1$d</string>
+    <string name="scheduled_message_id">ID：%1$d</string>
+    <string name="action_edit">编辑</string>
+    <string name="action_send_now">发送</string>
+    <string name="action_delete_message">删除</string>
+
+    <string name="rich_text_bold">加粗</string>
+    <string name="rich_text_italic">斜体</string>
+    <string name="rich_text_underline">下划线</string>
+    <string name="rich_text_strikethrough">删除线</string>
+    <string name="rich_text_spoiler">剧透</string>
+    <string name="rich_text_code">代码</string>
+    <string name="rich_text_pre">等宽</string>
+    <string name="rich_text_link">链接</string>
+    <string name="rich_text_mention">提及</string>
+    <string name="rich_text_emoji">表情</string>
+    <string name="rich_text_clear">清除</string>
+    <string name="rich_text_link_title">添加链接</string>
+    <string name="rich_text_link_hint">URL</string>
+    <string name="rich_text_code_language_title">代码语言</string>
+    <string name="rich_text_code_language_hint">语言（例如 kotlin）</string>
+
+    <string name="fullscreen_editor_meta">%1$d 个字符 • %2$d 个格式块</string>
+    <string name="fullscreen_editor_blocks">%1$d 个格式块</string>
+    <string name="fullscreen_editor_hint">选中文本以应用类似 Telegram 的富文本格式</string>
+    <string name="message_length_counter">%1$d/%2$d</string>
 
     <!-- Bot -->
     <string name="bot_commands">指令</string>
@@ -1639,4 +1690,16 @@
 
     <string name="chat_theme_editor_preset_nord_name">北境</string>
     <string name="chat_theme_editor_preset_nord_description">冷调北欧蓝色风格，整体观感沉稳且专业。</string>
+    <!-- Circular recorder -->
+    <string name="recorder_permissions_required">需要相机和麦克风权限</string>
+    <string name="recorder_processing">处理中...</string>
+    <string name="recorder_processing_error">处理错误: %1$s</string>
+    <string name="recorder_close_cd">关闭录制器</string>
+    <string name="recorder_switch_cd">切换摄像头</string>
+    <string name="recorder_done_cd">完成录制</string>
+    <string name="recorder_rec_label">录制中</string>
+    <string name="recorder_ready_label">就绪</string>
+    <string name="recorder_time_format">时长: %1$s</string>
+    <string name="recorder_zoom_format">变焦: %1$.1fx (范围 %2$.1fx - %3$.1fx)</string>
+    <string name="recorder_cancel">取消</string>
 </resources>

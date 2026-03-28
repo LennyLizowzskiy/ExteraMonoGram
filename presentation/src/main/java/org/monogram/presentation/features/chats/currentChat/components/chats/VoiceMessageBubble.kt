@@ -46,6 +46,7 @@ fun VoiceMessageBubble(
     onLongClick: (Offset) -> Unit,
     onReplyClick: (MessageModel) -> Unit = {},
     onReactionClick: (String) -> Unit = {},
+    isGroup: Boolean = false,
     toProfile: (Long) -> Unit = {},
     modifier: Modifier = Modifier,
     downloadUtils: IDownloadUtils
@@ -113,7 +114,7 @@ fun VoiceMessageBubble(
                     .width(IntrinsicSize.Max)
                     .widthIn(min = 184.dp, max = 300.dp)
             ) {
-                if (!isOutgoing && !isSameSenderAbove) {
+                if (isGroup && !isOutgoing && !isSameSenderAbove) {
                     MessageSenderName(msg, toProfile = toProfile)
                 }
 

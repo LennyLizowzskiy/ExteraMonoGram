@@ -28,17 +28,22 @@ fun StickerEmojiMenu(
     onStickerSelected: (String) -> Unit,
     onEmojiSelected: (String, StickerModel?) -> Unit,
     onGifSelected: (GifModel) -> Unit,
+    emojiOnlyMode: Boolean = false,
     onSearchFocused: (Boolean) -> Unit = {},
     videoPlayerPool: VideoPlayerPool,
     stickerRepository: StickerRepository
 ) {
-    var selectedTab by remember { mutableIntStateOf(0) }
+    var selectedTab by remember(emojiOnlyMode) { mutableIntStateOf(if (emojiOnlyMode) 1 else 0) }
     var isSearchMode by remember { mutableStateOf(false) }
-    val tabs = listOf(
-        Triple(stringResource(R.string.sticker_menu_tab_stickers), Icons.AutoMirrored.Outlined.StickyNote2, 0),
-        Triple(stringResource(R.string.sticker_menu_tab_emojis), Icons.Outlined.EmojiEmotions, 1),
-        Triple(stringResource(R.string.sticker_menu_tab_gifs), Icons.Outlined.Gif, 2)
-    )
+    val tabs = if (emojiOnlyMode) {
+        listOf(Triple(stringResource(R.string.sticker_menu_tab_emojis), Icons.Outlined.EmojiEmotions, 1))
+    } else {
+        listOf(
+            Triple(stringResource(R.string.sticker_menu_tab_stickers), Icons.AutoMirrored.Outlined.StickyNote2, 0),
+            Triple(stringResource(R.string.sticker_menu_tab_emojis), Icons.Outlined.EmojiEmotions, 1),
+            Triple(stringResource(R.string.sticker_menu_tab_gifs), Icons.Outlined.Gif, 2)
+        )
+    }
 
     Surface(
         modifier = if (isSearchMode) {
@@ -89,7 +94,7 @@ fun StickerEmojiMenu(
             }
 
             AnimatedVisibility(
-                visible = !isSearchMode,
+                visible = !isSearchMode && !emojiOnlyMode,
                 enter = fadeIn() + slideInVertically { it / 2 } + scaleIn(initialScale = 0.8f),
                 exit = fadeOut() + slideOutVertically { it / 2 } + scaleOut(targetScale = 0.8f),
                 modifier = Modifier

@@ -44,6 +44,7 @@ fun AudioMessageBubble(
     onReplyClick: (MessageModel) -> Unit = {},
     onReactionClick: (String) -> Unit = {},
     onClick: (Offset) -> Unit = {},
+    isGroup: Boolean = false,
     toProfile: (Long) -> Unit = {},
     modifier: Modifier = Modifier,
     downloadUtils: IDownloadUtils
@@ -112,7 +113,7 @@ fun AudioMessageBubble(
                     .width(IntrinsicSize.Max)
                     .widthIn(min = 184.dp, max = 300.dp)
             ) {
-                if (!isOutgoing && !isSameSenderAbove) {
+                if (isGroup && !isOutgoing && !isSameSenderAbove) {
                     MessageSenderName(msg, toProfile = toProfile)
                 }
 
@@ -158,7 +159,9 @@ fun AudioMessageBubble(
                         modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
                         entities = content.entities,
                         onSpoilerClick = { index ->
-                            if (!revealedSpoilers.contains(index)) {
+                            if (revealedSpoilers.contains(index)) {
+                                revealedSpoilers.remove(index)
+                            } else {
                                 revealedSpoilers.add(index)
                             }
                         },
@@ -280,6 +283,7 @@ fun AudioAlbumBubble(
     onLongClick: (Offset) -> Unit,
     onReplyClick: (MessageModel) -> Unit,
     onReactionClick: (String) -> Unit,
+    isGroup: Boolean = false,
     toProfile: (Long) -> Unit,
     modifier: Modifier = Modifier,
     downloadUtils: IDownloadUtils
@@ -325,7 +329,7 @@ fun AudioAlbumBubble(
                     .width(IntrinsicSize.Max)
                     .widthIn(min = 200.dp, max = 300.dp)
             ) {
-                if (!isOutgoing && !isSameSenderAbove) {
+                if (isGroup && !isOutgoing && !isSameSenderAbove) {
                     MessageSenderName(lastMsg, toProfile = toProfile)
                 }
 
@@ -375,7 +379,9 @@ fun AudioAlbumBubble(
                         modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
                         entities = content.entities,
                         onSpoilerClick = { index ->
-                            if (!revealedSpoilers.contains(index)) {
+                            if (revealedSpoilers.contains(index)) {
+                                revealedSpoilers.remove(index)
+                            } else {
                                 revealedSpoilers.add(index)
                             }
                         },
@@ -512,7 +518,9 @@ fun ChannelAudioAlbumBubble(
                         modifier = Modifier.padding(vertical = 4.dp),
                         entities = content.entities,
                         onSpoilerClick = { index ->
-                            if (!revealedSpoilers.contains(index)) {
+                            if (revealedSpoilers.contains(index)) {
+                                revealedSpoilers.remove(index)
+                            } else {
                                 revealedSpoilers.add(index)
                             }
                         },

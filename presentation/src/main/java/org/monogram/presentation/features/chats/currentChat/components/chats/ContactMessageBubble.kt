@@ -95,7 +95,7 @@ fun ContactMessageBubble(
             )
         ) {
             Column(modifier = Modifier.padding(12.dp)) {
-                if (!isOutgoing && !isSameSenderAbove) {
+                if (isGroup && !isOutgoing && !isSameSenderAbove) {
                     MessageSenderName(msg, toProfile = toProfile)
                 }
 

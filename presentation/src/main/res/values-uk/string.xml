@@ -321,6 +321,9 @@
     <string name="qr_code_title">QR-код</string>
     <string name="action_share">Поділитися</string>
     <string name="support_monogram_description">MonoGram — безкоштовний проєкт із відкритим кодом. Ваша підтримка допомагає нам розвивати застосунок та додавати нові функції.</string>
+    <string name="sponsor_sheet_description">Бейдж спонсора з сердечком надається з рівня підтримки Advanced або за
+        еквівалентну підтримку від 150 ₽ (приблизно $1.70).
+    </string>
     <string name="action_support_boosty">Підтримати на Boosty</string>
     <string name="action_maybe_later">Можливо, пізніше</string>
     <string name="cd_edit_profile">Змінити профіль</string>
@@ -353,9 +356,15 @@
     <string name="telegram_premium_title">Telegram Premium</string>
     <string name="telegram_premium_subtitle">Ексклюзивні функції</string>
     <string name="support_monogram_subtitle_settings">Допомога в розвитку проєкту</string>
+    <string name="sponsor_profile_title">Підтримав MonoGram</string>
+    <string name="sponsor_profile_subtitle">Цей користувач підтримує проєкт і допомагає нам розвиватися</string>
     <string name="about_subtitle_settings">Версія та інформація про MonoGram</string>
     <string name="debug_title">Налагодження</string>
     <string name="debug_subtitle">Параметри для розробників</string>
+    <string name="debug_sponsor_sheet_title">Показати вікно спонсора</string>
+    <string name="debug_sponsor_sheet_subtitle">Відкрити нижню панель з інформацією про спонсора</string>
+    <string name="debug_force_sponsor_sync_title">Примусова синхронізація спонсорів</string>
+    <string name="debug_force_sponsor_sync_subtitle">Завантажити ID спонсорів із каналу зараз</string>
     <string name="log_out_title">Вийти</string>
     <string name="log_out_subtitle">Завершити сеанс</string>
 
@@ -915,6 +924,48 @@
     <string name="action_send_items_count">Надіслати %1$d об’єктів</string>
     <string name="action_send_media">Надіслати медіа</string>
     <string name="action_cancel">Скасувати</string>
+    <string name="action_copy">Копіювати</string>
+    <string name="action_paste">Вставити</string>
+    <string name="action_cut">Вирізати</string>
+    <string name="action_select_all">Виділити все</string>
+    <string name="action_apply">Застосувати</string>
+    <string name="action_done">Готово</string>
+    <string name="action_refresh">Оновити</string>
+    <string name="action_open_fullscreen_editor">Повноекранний редактор</string>
+    <string name="fullscreen_editor_title">Редактор</string>
+    <string name="action_send_silent">Надіслати без звуку</string>
+    <string name="action_schedule_message">Відкласти повідомлення</string>
+    <string name="action_scheduled_messages">Відкладені повідомлення</string>
+    <string name="action_scheduled_messages_count">Відкладені повідомлення (%1$d)</string>
+    <string name="scheduled_messages_empty">Поки немає відкладених повідомлень</string>
+    <string name="scheduled_messages_summary_count">Усього відкладено: %1$d</string>
+    <string name="scheduled_messages_summary_next">Найближча відправка: %1$s</string>
+    <string name="scheduled_messages_summary_editable">Можна редагувати: %1$d</string>
+    <string name="scheduled_message_id">ID: %1$d</string>
+    <string name="action_edit">Змінити</string>
+    <string name="action_send_now">Надіслати</string>
+    <string name="action_delete_message">Видалити</string>
+
+    <string name="rich_text_bold">Жирний</string>
+    <string name="rich_text_italic">Курсив</string>
+    <string name="rich_text_underline">Підкреслений</string>
+    <string name="rich_text_strikethrough">Перекреслений</string>
+    <string name="rich_text_spoiler">Спойлер</string>
+    <string name="rich_text_code">Код</string>
+    <string name="rich_text_pre">Моноширинний</string>
+    <string name="rich_text_link">Посилання</string>
+    <string name="rich_text_mention">Згадати</string>
+    <string name="rich_text_emoji">Емодзі</string>
+    <string name="rich_text_clear">Очистити</string>
+    <string name="rich_text_link_title">Додати посилання</string>
+    <string name="rich_text_link_hint">URL</string>
+    <string name="rich_text_code_language_title">Мова коду</string>
+    <string name="rich_text_code_language_hint">Мова (наприклад, kotlin)</string>
+
+    <string name="fullscreen_editor_meta">%1$d символів • %2$d блоків форматування</string>
+    <string name="fullscreen_editor_blocks">%1$d блоків форматування</string>
+    <string name="fullscreen_editor_hint">Виділіть текст, щоб застосувати форматування як у Telegram</string>
+    <string name="message_length_counter">%1$d/%2$d</string>
 
     <!-- Bot -->
     <string name="bot_commands">Команди</string>
@@ -1652,4 +1703,16 @@
 
     <string name="chat_theme_editor_preset_nord_name">Норд</string>
     <string name="chat_theme_editor_preset_nord_description">Прохолодні північні сині відтінки зі спокійним професійним балансом.</string>
+    <!-- Circular recorder -->
+    <string name="recorder_permissions_required">Потрібні дозволи на камеру та мікрофон</string>
+    <string name="recorder_processing">Обробка...</string>
+    <string name="recorder_processing_error">Помилка обробки: %1$s</string>
+    <string name="recorder_close_cd">Закрити запис</string>
+    <string name="recorder_switch_cd">Перемкнути камеру</string>
+    <string name="recorder_done_cd">Завершити запис</string>
+    <string name="recorder_rec_label">REC</string>
+    <string name="recorder_ready_label">ГОТОВО</string>
+    <string name="recorder_time_format">Час: %1$s</string>
+    <string name="recorder_zoom_format">Зум: %1$.1fx (діапазон %2$.1fx - %3$.1fx)</string>
+    <string name="recorder_cancel">Скасувати</string>
 </resources>

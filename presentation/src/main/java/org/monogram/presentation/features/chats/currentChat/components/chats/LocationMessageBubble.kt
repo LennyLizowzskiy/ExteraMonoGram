@@ -112,7 +112,7 @@ fun LocationMessageBubble(
             )
         ) {
             Column(modifier = Modifier.padding(8.dp)) {
-                if (!isOutgoing && !isSameSenderAbove) {
+                if (isGroup && !isOutgoing && !isSameSenderAbove) {
                     MessageSenderName(msg, toProfile = toProfile)
                 }
 
@@ -298,7 +298,7 @@ fun VenueMessageBubble(
             )
         ) {
             Column(modifier = Modifier.padding(8.dp)) {
-                if (!isOutgoing && !isSameSenderAbove) {
+                if (isGroup && !isOutgoing && !isSameSenderAbove) {
                     MessageSenderName(msg, toProfile = toProfile)
                 }
 

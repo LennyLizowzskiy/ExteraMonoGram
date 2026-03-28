@@ -198,6 +198,7 @@ fun AlbumMessageBubbleContainer(
                     ChatAlbumMessageBubble(
                         messages = messages,
                         isOutgoing = isOutgoing,
+                        isGroup = isGroup,
                         isSameSenderAbove = isSameSenderAbove,
                         isSameSenderBelow = isSameSenderBelow,
                         autoplayGifs = autoplayGifs,

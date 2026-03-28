@@ -89,7 +89,7 @@ fun ChannelGifMessageBubble(
     }
 
     LaunchedEffect(content.path, content.isDownloading, autoDownloadMobile, autoDownloadWifi, autoDownloadRoaming) {
-        if (!hasPath && !content.isDownloading) {
+        if (content.path.isNullOrBlank() && !content.isDownloading) {
             val shouldDownload = when {
                 downloadUtils.isWifiConnected() -> autoDownloadWifi
                 downloadUtils.isRoaming() -> autoDownloadRoaming
@@ -352,7 +352,9 @@ fun ChannelGifMessageBubble(
                             ),
                             modifier = Modifier.padding(bottom = 2.dp),
                             onSpoilerClick = { index ->
-                                if (!revealedSpoilers.contains(index)) {
+                                if (revealedSpoilers.contains(index)) {
+                                    revealedSpoilers.remove(index)
+                                } else {
                                     revealedSpoilers.add(index)
                                 }
                             },

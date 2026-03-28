@@ -240,6 +240,16 @@ private fun ChatListItemHeader(
                 )
             }
 
+            if (!isSavedMessages && chat.isSponsor) {
+                Spacer(Modifier.width(4.dp))
+                Icon(
+                    imageVector = Icons.Rounded.Favorite,
+                    contentDescription = stringResource(R.string.cd_sponsor),
+                    modifier = Modifier.size(16.dp),
+                    tint = Color(0xFFE53935)
+                )
+            }
+
             if (!isSavedMessages && chat.emojiStatusPath != null) {
                 Spacer(Modifier.width(4.dp))
                 StickerImage(
@@ -291,14 +301,35 @@ private fun ChatListItemContent(
                     )
                 }
             } else if (chat.draftMessage != null) {
-                val inlineContent = rememberMessageInlineContent(
-                    entities = chat.draftMessageEntities,
-                    fontSize = fontSize
-                )
-                val annotatedDraft = buildAnnotatedMessageTextWithEmoji(
-                    text = chat.draftMessage ?: "",
-                    entities = chat.draftMessageEntities
-                )
+                val draftHasSpoiler = chat.draftMessageEntities.any { it.type is MessageEntityType.Spoiler }
+                val inlineContent = if (!draftHasSpoiler) {
+                    rememberMessageInlineContent(
+                        entities = chat.draftMessageEntities,
+                        fontSize = fontSize
+                    )
+                } else {
+                    emptyMap()
+                }
+                val annotatedDraft = if (draftHasSpoiler) {
+                    buildAnnotatedString {
+                        val spoilerLabel = stringResource(R.string.message_spoiler)
+                        append(spoilerLabel)
+                        addStyle(
+                            SpanStyle(
+                                background = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.1f),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                fontWeight = FontWeight.Bold
+                            ),
+                            0,
+                            spoilerLabel.length
+                        )
+                    }
+                } else {
+                    buildAnnotatedMessageTextWithEmoji(
+                        text = chat.draftMessage ?: "",
+                        entities = chat.draftMessageEntities
+                    )
+                }
                 Text(
                     text = buildAnnotatedString {
                         withStyle(SpanStyle(color = MaterialTheme.colorScheme.error)) { append(stringResource(R.string.message_draft_prefix)) }

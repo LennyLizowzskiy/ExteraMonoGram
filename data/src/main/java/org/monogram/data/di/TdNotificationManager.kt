@@ -715,9 +715,9 @@ class TdNotificationManager(
 
     private fun getMessageText(content: TdApi.MessageContent): String {
         return when (content) {
-            is TdApi.MessageText -> content.text.text
-            is TdApi.MessagePhoto -> "📷 Фотография ${content.caption.text}"
-            is TdApi.MessageVideo -> "📹 Видео ${content.caption.text}"
+            is TdApi.MessageText -> sanitizeSpoilers(content.text)
+            is TdApi.MessagePhoto -> "📷 Фотография ${sanitizeSpoilers(content.caption)}"
+            is TdApi.MessageVideo -> "📹 Видео ${sanitizeSpoilers(content.caption)}"
             is TdApi.MessageVoiceNote -> "🎤 Голосовое сообщение"
             is TdApi.MessageSticker -> "Стикер"
             is TdApi.MessageAnimation -> "GIF"
@@ -728,6 +728,29 @@ class TdNotificationManager(
             is TdApi.MessagePoll -> "📊 Опрос ${content.poll.question.text}"
             else -> "Сообщение"
         }
+    }
+
+    private fun sanitizeSpoilers(formattedText: TdApi.FormattedText?): String {
+        if (formattedText == null) return ""
+        val text = formattedText.text.orEmpty()
+        val spoilerEntities = formattedText.entities
+            ?.filter { it.type is TdApi.TextEntityTypeSpoiler }
+            .orEmpty()
+
+        if (spoilerEntities.isEmpty()) return text
+
+        val builder = StringBuilder(text)
+        spoilerEntities
+            .sortedByDescending { it.offset }
+            .forEach { entity ->
+                val start = entity.offset.coerceIn(0, builder.length)
+                val end = (entity.offset + entity.length).coerceIn(start, builder.length)
+                if (start < end) {
+                    builder.replace(start, end, "[spoiler]")
+                }
+            }
+
+        return builder.toString()
     }
 
     fun getChat(chatId: Long, callback: (TdApi.Chat) -> Unit) {

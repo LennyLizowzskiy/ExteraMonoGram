@@ -45,10 +45,7 @@ import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.zIndex
 import androidx.window.core.layout.WindowWidthSizeClass
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import org.monogram.domain.models.MessageContent
 import org.monogram.domain.models.MessageModel
@@ -95,14 +92,26 @@ fun ChatContent(
     var selectedMessageId by remember { mutableStateOf<Long?>(null) }
     val transformedMessageTexts = remember { mutableStateMapOf<Long, String>() }
     val originalMessageTexts = remember { mutableStateMapOf<Long, String>() }
-    val displayMessages = remember(state.messages, transformedMessageTexts.toMap()) {
-        state.messages.map { message ->
-            val transformedText = transformedMessageTexts[message.id] ?: return@map message
-            message.withUpdatedTextContent(transformedText)
+    val latestMessagesState = rememberUpdatedState(state.messages)
+    val selectedMessageIdState = rememberUpdatedState(selectedMessageId)
+    val displayMessages by remember {
+        derivedStateOf {
+            val baseMessages = latestMessagesState.value
+            if (transformedMessageTexts.isEmpty()) {
+                baseMessages
+            } else {
+                baseMessages.map { message ->
+                    val transformedText = transformedMessageTexts[message.id] ?: return@map message
+                    message.withUpdatedTextContent(transformedText)
+                }
+            }
         }
     }
-    val selectedMessage = remember(selectedMessageId, displayMessages) {
-        displayMessages.find { it.id == selectedMessageId }
+    val selectedMessage by remember {
+        derivedStateOf {
+            val currentSelectedId = selectedMessageIdState.value
+            displayMessages.find { it.id == currentSelectedId }
+        }
     }
     var menuOffset by remember { mutableStateOf(Offset.Zero) }
     var menuMessageSize by remember { mutableStateOf(IntSize.Zero) }
@@ -113,8 +122,8 @@ fun ChatContent(
     var editingPhotoPath by remember { mutableStateOf<String?>(null) }
     var editingVideoPath by remember { mutableStateOf<String?>(null) }
 
-    val groupedMessages = remember(displayMessages) {
-        groupMessagesByAlbum(displayMessages)
+    val groupedMessages by remember {
+        derivedStateOf { groupMessagesByAlbum(displayMessages) }
     }
     val isComments = state.rootMessage != null
     val isForumList = state.viewAsTopics && state.currentTopicId == null
@@ -307,7 +316,11 @@ fun ChatContent(
         snapshotFlow { scrollState.layoutInfo.visibleItemsInfo }
             .map { visibleItems ->
                 val visibleIds = mutableListOf<Long>()
+                val nearbyIds = mutableListOf<Long>()
                 if (visibleItems.isNotEmpty()) {
+                    val minIndex = visibleItems.minOf { it.index }
+                    val maxIndex = visibleItems.maxOf { it.index }
+
                     visibleItems.forEach { item ->
                         val groupedIndex = if (state.rootMessage != null) item.index - 1 else item.index
                         groupedMessages.getOrNull(groupedIndex)?.let { grouped ->
@@ -317,15 +330,27 @@ fun ChatContent(
                             }
                         }
                     }
+
+                    val nearbyStart = (minIndex - 5).coerceAtLeast(0)
+                    val nearbyEnd = maxIndex + 5
+                    for (index in nearbyStart..nearbyEnd) {
+                        if (index in minIndex..maxIndex) continue
+                        val groupedIndex = if (state.rootMessage != null) index - 1 else index
+                        groupedMessages.getOrNull(groupedIndex)?.let { grouped ->
+                            when (grouped) {
+                                is GroupedMessageItem.Single -> nearbyIds.add(grouped.message.id)
+                                is GroupedMessageItem.Album -> nearbyIds.addAll(grouped.messages.map { it.id })
+                            }
+                        }
+                    }
                 }
-                visibleIds
+                visibleIds.distinct() to nearbyIds.distinct().filterNot { it in visibleIds }
             }
             .distinctUntilChanged()
-            .collect { visibleIds ->
-                if (visibleIds.isNotEmpty()) {
-                    (component as? DefaultChatComponent)?.let {
-                        it.repositoryMessage.updateVisibleRange(it.chatId, visibleIds, emptyList())
-                    }
+            .debounce(100)
+            .collect { (visibleIds, nearbyIds) ->
+                (component as? DefaultChatComponent)?.let {
+                    it.repositoryMessage.updateVisibleRange(it.chatId, visibleIds, nearbyIds)
                 }
             }
     }
@@ -531,13 +556,21 @@ fun ChatContent(
                                     currentInlineBotUsername = state.currentInlineBotUsername,
                                     currentInlineQuery = state.currentInlineQuery,
                                     isInlineBotLoading = state.isInlineBotLoading,
-                                    attachBots = state.attachMenuBots
+                                    attachBots = state.attachMenuBots,
+                                    scheduledMessages = state.scheduledMessages,
+                                    isPremiumUser = state.currentUser?.isPremium == true
                                 )
                             }
 
                             val inputBarActions = remember(component, pendingMediaPaths) {
                                 ChatInputBarActions(
-                                    onSend = { text, entities -> component.onSendMessage(text, entities) },
+                                    onSend = { text, entities, options ->
+                                        component.onSendMessage(
+                                            text,
+                                            entities,
+                                            options
+                                        )
+                                    },
                                     onStickerClick = { component.onSendSticker(it) },
                                     onGifClick = { component.onSendGif(it) },
                                     onAttachClick = {
@@ -557,11 +590,21 @@ fun ChatContent(
                                     onDraftChange = { component.onDraftChange(it) },
                                     onTyping = { component.onTyping() },
                                     onCancelMedia = { pendingMediaPaths = emptyList() },
-                                    onSendMedia = { paths, caption ->
-                                        if (paths.size > 1) component.onSendAlbum(paths, caption)
+                                    onSendMedia = { paths, caption, captionEntities, options ->
+                                        if (paths.size > 1) component.onSendAlbum(
+                                            paths,
+                                            caption,
+                                            captionEntities,
+                                            options
+                                        )
                                         else paths.firstOrNull()?.let {
-                                            if (it.endsWith(".mp4")) component.onSendVideo(it, caption)
-                                            else component.onSendPhoto(it, caption)
+                                            if (it.endsWith(".mp4")) component.onSendVideo(
+                                                it,
+                                                caption,
+                                                captionEntities,
+                                                options
+                                            )
+                                            else component.onSendPhoto(it, caption, captionEntities, options)
                                         }
                                         pendingMediaPaths = emptyList()
                                     },
@@ -605,7 +648,11 @@ fun ChatContent(
                                     },
                                     onAttachBotClick = { bot ->
                                         component.onOpenAttachBot(bot.botUserId, bot.name)
-                                    }
+                                    },
+                                    onRefreshScheduledMessages = { component.onRefreshScheduledMessages() },
+                                    onEditScheduledMessage = { message -> component.onEditMessage(message) },
+                                    onDeleteScheduledMessage = { message -> component.onDeleteMessage(message) },
+                                    onSendScheduledNow = { message -> component.onSendScheduledNow(message) }
                                 )
                             }
 
@@ -671,10 +718,21 @@ fun ChatContent(
                                     groupedMessages = groupedMessages,
                                     onPhotoClick = { msg, paths, captions, index ->
                                         val content = msg.content as? MessageContent.Photo
-                                        if (content?.path != null) {
+                                        val validPath = content?.path?.takeIf { File(it).exists() }
+                                        if (validPath != null) {
                                             keyboardController?.hide()
                                             focusManager.clearFocus()
-                                            component.onOpenImages(paths, captions, index, msg.id)
+                                            val validPairs = paths.withIndex()
+                                                .mapNotNull { (itemIndex, path) ->
+                                                    path.takeIf { it.isNotBlank() && File(it).exists() }
+                                                        ?.let { valid -> valid to captions.getOrNull(itemIndex) }
+                                                }
+                                            if (validPairs.isNotEmpty()) {
+                                                val validPaths = validPairs.map { it.first }
+                                                val validCaptions = validPairs.map { it.second }
+                                                val startIndex = validPaths.indexOf(validPath).let { if (it >= 0) it else 0 }
+                                                component.onOpenImages(validPaths, validCaptions, startIndex, msg.id)
+                                            }
                                         } else content?.let { component.onDownloadFile(it.fileId) }
                                     },
                                     onVideoClick = { msg, path, caption ->
@@ -684,11 +742,12 @@ fun ChatContent(
 
                                         val videoContent = msg.content as? MessageContent.Video
                                         val supportsStreaming = videoContent?.supportsStreaming ?: false
+                                        val validPath = path?.takeIf { File(it).exists() }
 
-                                        if (path != null || supportsStreaming) {
+                                        if (validPath != null || supportsStreaming) {
                                             keyboardController?.hide()
                                             focusManager.clearFocus()
-                                            component.onOpenVideo(path = path, messageId = msg.id, caption = caption)
+                                            component.onOpenVideo(path = validPath, messageId = msg.id, caption = caption)
                                         } else {
                                             val fileId = when (val c = msg.content) {
                                                 is MessageContent.Video -> c.fileId
@@ -700,13 +759,14 @@ fun ChatContent(
                                     },
                                     onDocumentClick = { msg ->
                                         val doc = msg.content as? MessageContent.Document ?: return@ChatContentList
-                                        if (doc.path != null) {
-                                            val path = doc.path.toString().lowercase()
+                                        val validDocPath = doc.path?.takeIf { File(it).exists() }
+                                        if (validDocPath != null) {
+                                            val path = validDocPath.lowercase()
                                             if (path.endsWith(".jpg") || path.endsWith(".png")) {
                                                 keyboardController?.hide()
                                                 focusManager.clearFocus()
                                                 component.onOpenImages(
-                                                    listOf(doc.path.toString()),
+                                                    listOf(validDocPath),
                                                     listOf(doc.caption),
                                                     0,
                                                     msg.id
@@ -715,20 +775,21 @@ fun ChatContent(
                                                 keyboardController?.hide()
                                                 focusManager.clearFocus()
                                                 component.onOpenVideo(
-                                                    path = doc.path.toString(),
+                                                    path = validDocPath,
                                                     messageId = msg.id,
                                                     caption = doc.caption
                                                 )
-                                            } else component.downloadUtils.openFile(doc.path.toString())
+                                            } else component.downloadUtils.openFile(validDocPath)
                                         } else component.onDownloadFile(doc.fileId)
                                     },
                                     onAudioClick = { msg ->
                                         val audio = msg.content as? MessageContent.Audio ?: return@ChatContentList
-                                        if (audio.path != null) {
+                                        val validAudioPath = audio.path?.takeIf { File(it).exists() }
+                                        if (validAudioPath != null) {
                                             keyboardController?.hide()
                                             focusManager.clearFocus()
                                             component.onOpenVideo(
-                                                path = audio.path.toString(),
+                                                path = validAudioPath,
                                                 messageId = msg.id,
                                                 caption = audio.caption
                                             )
@@ -854,15 +915,14 @@ fun ChatContent(
                             AnimatedVisibility(
                                 visible = showInitialLoading,
                                 enter = fadeIn(),
-                                exit = fadeOut()
+                                exit = fadeOut(animationSpec = tween(200))
                             ) {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .background(MaterialTheme.colorScheme.surface),
-                                    contentAlignment = Alignment.Center
+                                        .background(MaterialTheme.colorScheme.surface)
                                 ) {
-                                    CircularProgressIndicator()
+                                    MessageListShimmer()
                                 }
                             }
                         }

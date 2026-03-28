@@ -18,8 +18,19 @@ interface ChatLocalDataSource {
     fun getMessagesForChat(chatId: Long): Flow<List<MessageEntity>>
     suspend fun getMessagesOlder(chatId: Long, fromMessageId: Long, limit: Int): List<MessageEntity>
     suspend fun getMessagesNewer(chatId: Long, fromMessageId: Long, limit: Int): List<MessageEntity>
+    suspend fun getLatestMessages(chatId: Long, limit: Int): List<MessageEntity>
     suspend fun insertMessage(message: MessageEntity)
     suspend fun insertMessages(messages: List<MessageEntity>)
+    suspend fun markAsRead(chatId: Long, upToMessageId: Long)
+    suspend fun updateMessageContent(
+        messageId: Long,
+        content: String,
+        contentType: String,
+        contentMeta: String?,
+        editDate: Int
+    )
+
+    suspend fun updateInteractionInfo(messageId: Long, viewCount: Int, forwardCount: Int, replyCount: Int)
     suspend fun deleteMessage(messageId: Long)
     suspend fun clearMessagesForChat(chatId: Long)
 

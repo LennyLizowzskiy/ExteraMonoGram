@@ -9,14 +9,45 @@ interface ChatStore : Store<ChatStore.Intent, ChatComponent.State, ChatStore.Lab
 
     sealed class Intent {
         data class UpdateState(val state: ChatComponent.State) : Intent()
-        data class SendMessage(val text: String, val entities: List<MessageEntity> = emptyList()) : Intent()
+        data class SendMessage(
+            val text: String,
+            val entities: List<MessageEntity> = emptyList(),
+            val sendOptions: MessageSendOptions = MessageSendOptions()
+        ) : Intent()
+
         data class SendSticker(val stickerPath: String) : Intent()
-        data class SendPhoto(val photoPath: String, val caption: String = "") : Intent()
-        data class SendVideo(val videoPath: String, val caption: String = "") : Intent()
+        data class SendPhoto(
+            val photoPath: String,
+            val caption: String = "",
+            val captionEntities: List<MessageEntity> = emptyList(),
+            val sendOptions: MessageSendOptions = MessageSendOptions()
+        ) : Intent()
+
+        data class SendVideo(
+            val videoPath: String,
+            val caption: String = "",
+            val captionEntities: List<MessageEntity> = emptyList(),
+            val sendOptions: MessageSendOptions = MessageSendOptions()
+        ) : Intent()
+
         data class SendGif(val gif: GifModel) : Intent()
-        data class SendGifFile(val path: String, val caption: String = "") : Intent()
-        data class SendAlbum(val paths: List<String>, val caption: String = "") : Intent()
+        data class SendGifFile(
+            val path: String,
+            val caption: String = "",
+            val captionEntities: List<MessageEntity> = emptyList(),
+            val sendOptions: MessageSendOptions = MessageSendOptions()
+        ) : Intent()
+
+        data class SendAlbum(
+            val paths: List<String>,
+            val caption: String = "",
+            val captionEntities: List<MessageEntity> = emptyList(),
+            val sendOptions: MessageSendOptions = MessageSendOptions()
+        ) : Intent()
+
         data class SendVoice(val path: String, val duration: Int, val waveform: ByteArray) : Intent()
+        object RefreshScheduledMessages : Intent()
+        data class SendScheduledNow(val message: MessageModel) : Intent()
         object LoadMore : Intent()
         object LoadNewer : Intent()
         object BackClicked : Intent()

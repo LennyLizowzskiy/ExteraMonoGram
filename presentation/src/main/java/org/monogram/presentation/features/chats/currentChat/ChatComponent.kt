@@ -21,14 +21,45 @@ interface ChatComponent {
     val repositoryMessage: MessageRepository
     val downloadUtils: IDownloadUtils
 
-    fun onSendMessage(text: String, entities: List<MessageEntity> = emptyList())
+    fun onSendMessage(
+        text: String,
+        entities: List<MessageEntity> = emptyList(),
+        sendOptions: MessageSendOptions = MessageSendOptions()
+    )
+
     fun onSendSticker(stickerPath: String)
-    fun onSendPhoto(photoPath: String, caption: String = "")
-    fun onSendVideo(videoPath: String, caption: String = "")
+    fun onSendPhoto(
+        photoPath: String,
+        caption: String = "",
+        captionEntities: List<MessageEntity> = emptyList(),
+        sendOptions: MessageSendOptions = MessageSendOptions()
+    )
+
+    fun onSendVideo(
+        videoPath: String,
+        caption: String = "",
+        captionEntities: List<MessageEntity> = emptyList(),
+        sendOptions: MessageSendOptions = MessageSendOptions()
+    )
+
     fun onSendGif(gif: GifModel)
-    fun onSendGifFile(path: String, caption: String = "")
-    fun onSendAlbum(paths: List<String>, caption: String = "")
+    fun onSendGifFile(
+        path: String,
+        caption: String = "",
+        captionEntities: List<MessageEntity> = emptyList(),
+        sendOptions: MessageSendOptions = MessageSendOptions()
+    )
+
+    fun onSendAlbum(
+        paths: List<String>,
+        caption: String = "",
+        captionEntities: List<MessageEntity> = emptyList(),
+        sendOptions: MessageSendOptions = MessageSendOptions()
+    )
+
     fun onSendVoice(path: String, duration: Int, waveform: ByteArray)
+    fun onRefreshScheduledMessages()
+    fun onSendScheduledNow(message: MessageModel)
     fun loadMore()
     fun loadNewer()
     fun onBackClicked()
@@ -156,6 +187,7 @@ interface ChatComponent {
         val isChannel: Boolean = false,
         val isOnline: Boolean = false,
         val isVerified: Boolean = false,
+        val isSponsor: Boolean = false,
         val canWrite: Boolean = false,
         val isAdmin: Boolean = false,
         val permissions: ChatPermissionsModel = ChatPermissionsModel(),
@@ -255,6 +287,7 @@ interface ChatComponent {
         val currentInlineQuery: String? = null,
         val isInlineBotLoading: Boolean = false,
         val isInstalledFromGooglePlay: Boolean = true,
-        val attachMenuBots: List<AttachMenuBotModel> = emptyList()
+        val attachMenuBots: List<AttachMenuBotModel> = emptyList(),
+        val scheduledMessages: List<MessageModel> = emptyList()
     )
 }

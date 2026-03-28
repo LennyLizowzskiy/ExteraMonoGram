@@ -26,6 +26,7 @@ import org.monogram.presentation.features.chats.currentChat.components.VideoPlay
 fun ChatAlbumMessageBubble(
     messages: List<MessageModel>,
     isOutgoing: Boolean,
+    isGroup: Boolean = false,
     isSameSenderAbove: Boolean = false,
     isSameSenderBelow: Boolean = false,
     autoplayGifs: Boolean,
@@ -71,6 +72,7 @@ fun ChatAlbumMessageBubble(
             onLongClick = onLongClick,
             onReplyClick = onReplyClick,
             onReactionClick = onReactionClick,
+            isGroup = isGroup,
             toProfile = toProfile,
             modifier = modifier,
             downloadUtils = downloadUtils
@@ -94,6 +96,7 @@ fun ChatAlbumMessageBubble(
             onLongClick = onLongClick,
             onReplyClick = onReplyClick,
             onReactionClick = onReactionClick,
+            isGroup = isGroup,
             toProfile = toProfile,
             modifier = modifier,
             downloadUtils = downloadUtils
@@ -216,7 +219,9 @@ fun ChatAlbumMessageBubble(
                             ),
                             color = if (isOutgoing) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
                             onSpoilerClick = { index ->
-                                if (!revealedSpoilers.contains(index)) {
+                                if (revealedSpoilers.contains(index)) {
+                                    revealedSpoilers.remove(index)
+                                } else {
                                     revealedSpoilers.add(index)
                                 }
                             },

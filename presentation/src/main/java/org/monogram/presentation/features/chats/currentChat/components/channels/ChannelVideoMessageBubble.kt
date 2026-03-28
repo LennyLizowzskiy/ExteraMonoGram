@@ -105,7 +105,7 @@ fun ChannelVideoMessageBubble(
     }
 
     LaunchedEffect(content.path, content.isDownloading, autoDownloadMobile, autoDownloadWifi, autoDownloadRoaming) {
-        if (!hasPath && !content.isDownloading && !content.supportsStreaming) {
+        if (content.path.isNullOrBlank() && !content.isDownloading && !content.supportsStreaming) {
             val shouldDownload = when {
                 downloadUtils.isWifiConnected() -> autoDownloadWifi
                 downloadUtils.isRoaming() -> autoDownloadRoaming
@@ -358,9 +358,11 @@ fun ChannelVideoMessageBubble(
                                 lineHeight = (fontSize * 1.35f).sp
                             ),
                             onSpoilerClick = { index ->
-                                if (!revealedSpoilers.contains(index)) revealedSpoilers.add(
-                                    index
-                                )
+                                if (revealedSpoilers.contains(index)) {
+                                    revealedSpoilers.remove(index)
+                                } else {
+                                    revealedSpoilers.add(index)
+                                }
                             },
                             onClick = { offset -> onLongClick(videoPosition + offset) },
                             onLongClick = { offset -> onLongClick(videoPosition + offset) }

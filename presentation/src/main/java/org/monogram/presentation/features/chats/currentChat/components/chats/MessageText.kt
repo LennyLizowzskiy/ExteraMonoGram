@@ -160,31 +160,25 @@ private fun DefaultTextRender(
         modifier = Modifier
             .drawBehind {
                 layoutResult.value?.let { result ->
-                    entities.forEachIndexed { index, entity ->
-                        if (entity.type is MessageEntityType.Spoiler) {
-                            val spoilerAnnotation = text.getStringAnnotations("SPOILER_UNREVEALED", 0, text.length)
-                                .find { it.item == index.toString() }
-
-                            if (spoilerAnnotation != null) {
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && shader != null) {
-                                    drawSpoilerEffectApi33(
-                                        layoutResult = result,
-                                        start = spoilerAnnotation.start,
-                                        end = spoilerAnnotation.end,
-                                        shader = shader,
-                                        time = time,
-                                        color = spoilerColor.copy(alpha = 0.5f)
-                                    )
-                                } else {
-                                    drawSpoilerEffectFallback(
-                                        layoutResult = result,
-                                        start = spoilerAnnotation.start,
-                                        end = spoilerAnnotation.end,
-                                        time = time,
-                                        color = spoilerColor
-                                    )
-                                }
-                            }
+                    val unrevealedSpoilers = text.getStringAnnotations("SPOILER_UNREVEALED", 0, text.length)
+                    unrevealedSpoilers.forEach { spoilerAnnotation ->
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && shader != null) {
+                            drawSpoilerEffectApi33(
+                                layoutResult = result,
+                                start = spoilerAnnotation.start,
+                                end = spoilerAnnotation.end,
+                                shader = shader,
+                                time = time,
+                                color = spoilerColor.copy(alpha = 0.5f)
+                            )
+                        } else {
+                            drawSpoilerEffectFallback(
+                                layoutResult = result,
+                                start = spoilerAnnotation.start,
+                                end = spoilerAnnotation.end,
+                                time = time,
+                                color = spoilerColor
+                            )
                         }
                     }
                 }
@@ -194,8 +188,19 @@ private fun DefaultTextRender(
                     onTap = { offset ->
                         var consumed = false
                         layoutResult.value?.let { result ->
-                            val position = result.getOffsetForPosition(offset)
-                            text.getStringAnnotations(position, position).firstOrNull()?.let { annotation ->
+                            val rawPosition = result.getOffsetForPosition(offset)
+                            val position = if (text.isNotEmpty()) rawPosition.coerceIn(0, text.length - 1) else 0
+                            val annotations = buildList {
+                                addAll(text.getStringAnnotations(position, (position + 1).coerceAtMost(text.length)))
+                                if (position > 0) {
+                                    addAll(text.getStringAnnotations(position - 1, position))
+                                }
+                            }
+
+                            val annotation = annotations.firstOrNull { it.tag.startsWith("SPOILER") }
+                                ?: annotations.firstOrNull()
+
+                            annotation?.let {
                                 when (annotation.tag) {
                                     "URL" -> {
                                         val url = normalizeUrl(annotation.item)
@@ -204,8 +209,10 @@ private fun DefaultTextRender(
                                     }
 
                                     "SPOILER", "SPOILER_REVEALED", "SPOILER_UNREVEALED" -> {
-                                        onSpoilerClick(annotation.item.toInt())
-                                        consumed = true
+                                        annotation.item.toIntOrNull()?.let {
+                                            onSpoilerClick(it)
+                                            consumed = true
+                                        }
                                     }
 
                                     "COPY" -> {

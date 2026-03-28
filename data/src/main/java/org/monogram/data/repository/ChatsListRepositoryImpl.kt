@@ -501,6 +501,7 @@ class ChatsListRepositoryImpl(
                 old.typingAction != new.typingAction ||
                 old.draftMessage != new.draftMessage ||
                 old.isVerified != new.isVerified ||
+                old.isSponsor != new.isSponsor ||
                 old.viewAsTopics != new.viewAsTopics ||
                 old.isForum != new.isForum ||
                 old.isBot != new.isBot ||
@@ -522,7 +523,9 @@ class ChatsListRepositoryImpl(
                 old.permissionCanChangeInfo != new.permissionCanChangeInfo ||
                 old.permissionCanInviteUsers != new.permissionCanInviteUsers ||
                 old.permissionCanPinMessages != new.permissionCanPinMessages ||
-                old.permissionCanCreateTopics != new.permissionCanCreateTopics
+                old.permissionCanCreateTopics != new.permissionCanCreateTopics ||
+                old.lastMessageContentType != new.lastMessageContentType ||
+                old.lastMessageSenderName != new.lastMessageSenderName
     }
 
     private fun resolvePersistPosition(chat: TdApi.Chat): TdApi.ChatPosition? {
@@ -590,8 +593,11 @@ class ChatsListRepositoryImpl(
 
     override fun refresh() {
         retryConnection()
+        updateActiveListPositionsFromCache()
+        triggerUpdate()
         scope.launch(dispatchers.io) {
-            chatRemoteSource.loadChats(activeChatList, 50)
+            val limit = currentLimit.coerceAtLeast(50)
+            chatRemoteSource.loadChats(activeChatList, limit)
             triggerUpdate()
         }
     }

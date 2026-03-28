@@ -15,6 +15,7 @@ import org.monogram.data.datasource.remote.UserRemoteDataSource
 import org.monogram.data.gateway.TelegramGateway
 import org.monogram.data.gateway.UpdateDispatcher
 import org.monogram.data.infra.FileDownloadQueue
+import org.monogram.data.infra.SponsorSyncManager
 import org.monogram.data.mapper.user.*
 import org.monogram.domain.models.*
 import org.monogram.domain.repository.ChatMemberStatus
@@ -29,6 +30,7 @@ class UserRepositoryImpl(
     private val gateway: TelegramGateway,
     private val updates: UpdateDispatcher,
     private val fileQueue: FileDownloadQueue,
+    private val sponsorSyncManager: SponsorSyncManager,
     scopeProvider: ScopeProvider
 ) : UserRepository {
 
@@ -36,6 +38,8 @@ class UserRepositoryImpl(
     private var currentUserId: Long = 0L
     private val userRequests = ConcurrentHashMap<Long, Deferred<TdApi.User?>>()
     private val fullInfoRequests = ConcurrentHashMap<Long, Deferred<TdApi.UserFullInfo?>>()
+    private val missingUsersUntilMs = ConcurrentHashMap<Long, Long>()
+    private val missingUserFullInfoUntilMs = ConcurrentHashMap<Long, Long>()
 
     private val emojiPathCache = ConcurrentHashMap<Long, String>()
     private val fileIdToUserIdMap = ConcurrentHashMap<Int, Long>()
@@ -178,9 +182,11 @@ class UserRepositoryImpl(
             }
         }
 
+        if (isNegativeCached(missingUsersUntilMs, userId)) return null
+
         val deferred = userRequests.getOrPut(userId) {
             scope.async {
-                remote.getUser(userId)?.also {
+                fetchAndCacheUser(userId)?.also {
                     userLocal.putUser(it)
                     if (userLocal is RoomUserLocalDataSource) {
                         userLocal.saveUser(it.toEntity())
@@ -199,7 +205,7 @@ class UserRepositoryImpl(
 
     override suspend fun getUserFullInfo(userId: Long): UserModel? {
         if (userId <= 0) return null
-        val user = userLocal.getUser(userId) ?: remote.getUser(userId)?.also {
+        val user = userLocal.getUser(userId) ?: fetchAndCacheUser(userId)?.also {
             userLocal.putUser(it)
             if (userLocal is RoomUserLocalDataSource) {
                 userLocal.saveUser(it.toEntity())
@@ -216,9 +222,13 @@ class UserRepositoryImpl(
             return mapUserModel(user, fullInfo)
         }
 
+        if (isNegativeCached(missingUserFullInfoUntilMs, userId)) {
+            return mapUserModel(user, null)
+        }
+
         val deferred = fullInfoRequests.getOrPut(userId) {
             scope.async {
-                remote.getUserFullInfo(userId)?.also {
+                fetchAndCacheUserFullInfo(userId)?.also {
                     userLocal.putUserFullInfo(userId, it)
                     userLocal.saveFullInfoEntity(it.toEntity(userId))
                 }
@@ -302,43 +312,91 @@ class UserRepositoryImpl(
     }
 
     override suspend fun getChatFullInfo(chatId: Long): ChatFullInfoModel? {
-        if (chatId > 0) {
-            val fullInfo = userLocal.getUserFullInfo(chatId) ?: userLocal.getFullInfoEntity(chatId)?.let {
-                val info = it.toTdApi()
-                userLocal.putUserFullInfo(chatId, info)
-                info
-            } ?: remote.getUserFullInfo(chatId)?.also {
-                userLocal.putUserFullInfo(chatId, it)
-                userLocal.saveFullInfoEntity(it.toEntity(chatId))
-            }
-            return fullInfo?.mapUserFullInfoToChat()
-        }
+        if (chatId == 0L) return null
 
         val chat = remote.getChat(chatId)?.also { chatLocal.insertChat(it.toEntity()) }
             ?: chatLocal.getChat(chatId)?.let { it.toTdApiChat() }
-            ?: return null
 
-        val dbFullInfo = chatLocal.getChatFullInfo(chatId)
-
-        return when (val type = chat.type) {
-            is TdApi.ChatTypeSupergroup -> {
-                val fullInfo = remote.getSupergroupFullInfo(type.supergroupId)
-                val supergroup = remote.getSupergroup(type.supergroupId)
-                fullInfo?.let {
-                    chatLocal.insertChatFullInfo(it.toEntity(chatId))
+        if (chat != null) {
+            val dbFullInfo = chatLocal.getChatFullInfo(chatId)
+            return when (val type = chat.type) {
+                is TdApi.ChatTypePrivate -> {
+                    val userId = type.userId
+                    val fullInfo = userLocal.getUserFullInfo(userId) ?: userLocal.getFullInfoEntity(userId)?.let {
+                        val info = it.toTdApi()
+                        userLocal.putUserFullInfo(userId, info)
+                        info
+                    } ?: fetchAndCacheUserFullInfo(userId)?.also {
+                        userLocal.putUserFullInfo(userId, it)
+                        userLocal.saveFullInfoEntity(it.toEntity(userId))
+                    }
+                    fullInfo?.mapUserFullInfoToChat() ?: dbFullInfo?.toDomain()
                 }
-                fullInfo?.mapSupergroupFullInfoToChat(supergroup) ?: dbFullInfo?.toDomain()
-            }
-            is TdApi.ChatTypeBasicGroup -> {
-                val fullInfo = remote.getBasicGroupFullInfo(type.basicGroupId)
-                fullInfo?.let {
-                    chatLocal.insertChatFullInfo(it.toEntity(chatId))
-                }
-                fullInfo?.mapBasicGroupFullInfoToChat() ?: dbFullInfo?.toDomain()
-            }
 
-            else -> dbFullInfo?.toDomain()
+                is TdApi.ChatTypeSupergroup -> {
+                    val fullInfo = remote.getSupergroupFullInfo(type.supergroupId)
+                    val supergroup = remote.getSupergroup(type.supergroupId)
+                    fullInfo?.let {
+                        chatLocal.insertChatFullInfo(it.toEntity(chatId))
+                    }
+                    fullInfo?.mapSupergroupFullInfoToChat(supergroup) ?: dbFullInfo?.toDomain()
+                }
+
+                is TdApi.ChatTypeBasicGroup -> {
+                    val fullInfo = remote.getBasicGroupFullInfo(type.basicGroupId)
+                    fullInfo?.let {
+                        chatLocal.insertChatFullInfo(it.toEntity(chatId))
+                    }
+                    fullInfo?.mapBasicGroupFullInfoToChat() ?: dbFullInfo?.toDomain()
+                }
+
+                else -> dbFullInfo?.toDomain()
+            }
         }
+
+        val userId = chatId
+        val fullInfo = userLocal.getUserFullInfo(userId) ?: userLocal.getFullInfoEntity(userId)?.let {
+            val info = it.toTdApi()
+            userLocal.putUserFullInfo(userId, info)
+            info
+        } ?: fetchAndCacheUserFullInfo(userId)?.also {
+            userLocal.putUserFullInfo(userId, it)
+            userLocal.saveFullInfoEntity(it.toEntity(userId))
+        }
+        return fullInfo?.mapUserFullInfoToChat()
+    }
+
+    private suspend fun fetchAndCacheUser(userId: Long): TdApi.User? {
+        if (userId <= 0 || isNegativeCached(missingUsersUntilMs, userId)) return null
+        val user = remote.getUser(userId)
+        if (user != null) {
+            missingUsersUntilMs.remove(userId)
+        } else {
+            rememberNegative(missingUsersUntilMs, userId)
+        }
+        return user
+    }
+
+    private suspend fun fetchAndCacheUserFullInfo(userId: Long): TdApi.UserFullInfo? {
+        if (userId <= 0 || isNegativeCached(missingUserFullInfoUntilMs, userId)) return null
+        val info = remote.getUserFullInfo(userId)
+        if (info != null) {
+            missingUserFullInfoUntilMs.remove(userId)
+        } else {
+            rememberNegative(missingUserFullInfoUntilMs, userId)
+        }
+        return info
+    }
+
+    private fun isNegativeCached(cache: ConcurrentHashMap<Long, Long>, id: Long): Boolean {
+        val until = cache[id] ?: return false
+        if (until > System.currentTimeMillis()) return true
+        cache.remove(id, until)
+        return false
+    }
+
+    private fun rememberNegative(cache: ConcurrentHashMap<Long, Long>, id: Long) {
+        cache[id] = System.currentTimeMillis() + NEGATIVE_CACHE_TTL_MS
     }
 
     override suspend fun getContacts(): List<UserModel> {
@@ -524,6 +582,10 @@ class UserRepositoryImpl(
     override suspend fun reorderActiveUsernames(usernames: List<String>) =
         remote.reorderActiveUsernames(usernames.toTypedArray())
 
+    override fun forceSponsorSync() {
+        sponsorSyncManager.forceSync()
+    }
+
     private fun TdApi.Chat.toEntity(): org.monogram.data.db.model.ChatEntity {
         val isChannel = (type as? TdApi.ChatTypeSupergroup)?.isChannel ?: false
         val isArchived = positions.any { it.list is TdApi.ChatListArchive }
@@ -635,15 +697,51 @@ class UserRepositoryImpl(
     }
 
     private fun TdApi.User.toEntity(): org.monogram.data.db.model.UserEntity {
+        val usernamesData = buildString {
+            append(usernames?.activeUsernames?.joinToString("|").orEmpty())
+            append('\n')
+            append(usernames?.disabledUsernames?.joinToString("|").orEmpty())
+            append('\n')
+            append(usernames?.editableUsername.orEmpty())
+            append('\n')
+            append(usernames?.collectibleUsernames?.joinToString("|").orEmpty())
+        }
+
+        val statusType = when (status) {
+            is TdApi.UserStatusOnline -> "ONLINE"
+            is TdApi.UserStatusRecently -> "RECENTLY"
+            is TdApi.UserStatusLastWeek -> "LAST_WEEK"
+            is TdApi.UserStatusLastMonth -> "LAST_MONTH"
+            else -> "OFFLINE"
+        }
+
+        val statusEmojiId = when (val type = emojiStatus?.type) {
+            is TdApi.EmojiStatusTypeCustomEmoji -> type.customEmojiId
+            is TdApi.EmojiStatusTypeUpgradedGift -> type.modelCustomEmojiId
+            else -> 0L
+        }
+
         return org.monogram.data.db.model.UserEntity(
             id = id,
             firstName = firstName,
             lastName = lastName.ifEmpty { null },
             phoneNumber = phoneNumber.ifEmpty { null },
             avatarPath = profilePhoto?.small?.local?.path?.ifEmpty { null },
+            personalAvatarPath = null,
             isPremium = isPremium,
             isVerified = verificationStatus?.isVerified ?: false,
+            isSupport = isSupport,
+            isContact = isContact,
+            isMutualContact = isMutualContact,
+            isCloseFriend = isCloseFriend,
+            haveAccess = haveAccess,
             username = usernames?.activeUsernames?.firstOrNull(),
+            usernamesData = usernamesData,
+            statusType = statusType,
+            accentColorId = accentColorId,
+            profileAccentColorId = profileAccentColorId,
+            statusEmojiId = statusEmojiId,
+            languageCode = languageCode.ifEmpty { null },
             lastSeen = (status as? TdApi.UserStatusOffline)?.wasOnline?.toLong() ?: 0L,
             createdAt = System.currentTimeMillis()
         )
@@ -654,5 +752,9 @@ class UserRepositoryImpl(
         val memberCount = Regex("""mc:(\d+)""").find(clientData)?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 0
         val onlineCount = Regex("""oc:(\d+)""").find(clientData)?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 0
         return memberCount to onlineCount
+    }
+
+    companion object {
+        private const val NEGATIVE_CACHE_TTL_MS = 5 * 60 * 1000L
     }
 }

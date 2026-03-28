@@ -82,7 +82,7 @@ fun VideoMessageBubble(
     }
 
     LaunchedEffect(content.path, content.isDownloading, autoDownloadMobile, autoDownloadWifi, autoDownloadRoaming) {
-        if (!hasPath && !content.isDownloading && !content.supportsStreaming) {
+        if (content.path.isNullOrBlank() && !content.isDownloading && !content.supportsStreaming) {
             val shouldDownload = when {
                 downloadUtils.isWifiConnected() -> autoDownloadWifi
                 downloadUtils.isRoaming() -> autoDownloadRoaming
@@ -419,7 +419,9 @@ fun VideoMessageBubble(
                             ),
                             modifier = Modifier.padding(bottom = 4.dp),
                             onSpoilerClick = { index ->
-                                if (!revealedSpoilers.contains(index)) {
+                                if (revealedSpoilers.contains(index)) {
+                                    revealedSpoilers.remove(index)
+                                } else {
                                     revealedSpoilers.add(index)
                                 }
                             },

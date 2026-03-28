@@ -62,8 +62,18 @@ fun buildAnnotatedMessageTextWithEmoji(
     val linkColor = MaterialTheme.colorScheme.primary
     val codeBackgroundColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
     val codeTextColor = MaterialTheme.colorScheme.primary
+    val revealedSpoilersSnapshot = revealedSpoilers.toSet()
 
-    return remember(text, entities, isOutgoing, revealedSpoilers, emojiFontFamily, linkColor, codeBackgroundColor, codeTextColor) {
+    return remember(
+        text,
+        entities,
+        isOutgoing,
+        revealedSpoilersSnapshot,
+        emojiFontFamily,
+        linkColor,
+        codeBackgroundColor,
+        codeTextColor
+    ) {
         val emojiEntities = entities.filter { it.type is MessageEntityType.CustomEmoji }.sortedBy { it.offset }
         val otherEntities = entities.filter { it.type !is MessageEntityType.CustomEmoji }
 
@@ -103,12 +113,12 @@ fun buildAnnotatedMessageTextWithEmoji(
                 addEmojiStyle(this.toAnnotatedString().text, emojiFontFamily)
             }
 
-            otherEntities.forEachIndexed { index, entity ->
+            otherEntities.forEach { entity ->
                 val safeStart = entity.offset.coerceIn(0, text.length)
                 val safeEnd = (entity.offset + entity.length).coerceIn(safeStart, text.length)
-                val start = indexMapping[safeStart] ?: return@forEachIndexed
-                val end = indexMapping[safeEnd] ?: indexMapping[text.length] ?: return@forEachIndexed
-                if (start >= end) return@forEachIndexed
+                val start = indexMapping[safeStart] ?: return@forEach
+                val end = indexMapping[safeEnd] ?: indexMapping[text.length] ?: return@forEach
+                if (start >= end) return@forEach
 
                 when (val type = entity.type) {
                     is MessageEntityType.Bold -> addStyle(SpanStyle(fontWeight = FontWeight.Bold), start, end)
@@ -126,19 +136,20 @@ fun buildAnnotatedMessageTextWithEmoji(
                     )
 
                     is MessageEntityType.Spoiler -> {
-                        val isRevealed = revealedSpoilers.contains(index)
+                        val spoilerKey = spoilerKeyForEntity(entity)
+                        val isRevealed = revealedSpoilersSnapshot.contains(spoilerKey)
                         if (isRevealed) {
                             addStyle(SpanStyle(background = Color.Gray.copy(alpha = 0.2f)), start, end)
-                            addStringAnnotation("SPOILER_REVEALED", index.toString(), start, end)
+                            addStringAnnotation("SPOILER_REVEALED", spoilerKey.toString(), start, end)
                         } else {
                             addStyle(
                                 SpanStyle(color = Color.Transparent),
                                 start,
                                 end
                             )
-                            addStringAnnotation("SPOILER_UNREVEALED", index.toString(), start, end)
+                            addStringAnnotation("SPOILER_UNREVEALED", spoilerKey.toString(), start, end)
                         }
-                        addStringAnnotation("SPOILER", index.toString(), start, end)
+                        addStringAnnotation("SPOILER", spoilerKey.toString(), start, end)
                     }
 
                     is MessageEntityType.Code -> {
@@ -218,6 +229,10 @@ fun buildAnnotatedMessageTextWithEmoji(
             }
         }
     }
+}
+
+private fun spoilerKeyForEntity(entity: MessageEntity): Int {
+    return (entity.offset * 1_000_003) xor entity.length
 }
 
 private fun String.safeSubstring(start: Int, end: Int): String {

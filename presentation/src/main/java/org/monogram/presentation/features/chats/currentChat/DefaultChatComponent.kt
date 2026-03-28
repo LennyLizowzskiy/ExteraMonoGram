@@ -57,6 +57,7 @@ class DefaultChatComponent(
     var loadMoreJob: Job? = null
     var loadNewerJob: Job? = null
     var inlineBotJob: Job? = null
+    var draftSaveJob: Job? = null
     private var autoLoadJob: Job? = null
     private var mentionJob: Job? = null
 
@@ -181,6 +182,7 @@ class DefaultChatComponent(
                 loadChatInfo()
                 loadDraft()
                 loadPinnedMessage()
+                loadScheduledMessages()
                 loadMembers()
             }
         }
@@ -191,7 +193,13 @@ class DefaultChatComponent(
         autoLoadJob = scope.launch {
             while (isActive) {
                 val currentState = _state.value
-                if (initialMessageId == null && currentState.messages.size <= 1 && !currentState.isLoading && !currentState.isLoadingOlder) {
+                if (
+                    initialMessageId == null &&
+                    currentState.messages.isEmpty() &&
+                    !currentState.isLoading &&
+                    !currentState.isLoadingOlder &&
+                    !currentState.isLoadingNewer
+                ) {
                     Log.d("DefaultChatComponent", "Auto-loading messages...")
                     loadMessages()
                 }
@@ -202,13 +210,15 @@ class DefaultChatComponent(
 
     private fun handleResume(initialMessageId: Long?) {
         val currentState = _state.value
+        if (currentState.isLoading || currentState.isLoadingOlder || currentState.isLoadingNewer) return
+
         if (!currentState.viewAsTopics) {
             if (initialMessageId != null) {
                 scrollToMessage(initialMessageId)
             } else if (currentState.messages.isEmpty()) {
                 loadMessages()
             }
-        } else if (currentState.messages.size <= 1 && currentState.currentTopicId == null) {
+        } else if (currentState.messages.isEmpty() && currentState.currentTopicId == null) {
             loadMessages()
         }
     }
@@ -281,25 +291,50 @@ class DefaultChatComponent(
         }
     }
 
-    override fun onSendMessage(text: String, entities: List<MessageEntity>) =
-        store.accept(ChatStore.Intent.SendMessage(text, entities))
+    override fun onSendMessage(
+        text: String,
+        entities: List<MessageEntity>,
+        sendOptions: MessageSendOptions
+    ) = store.accept(ChatStore.Intent.SendMessage(text, entities, sendOptions))
 
     override fun onSendSticker(stickerPath: String) = store.accept(ChatStore.Intent.SendSticker(stickerPath))
-    override fun onSendPhoto(photoPath: String, caption: String) =
-        store.accept(ChatStore.Intent.SendPhoto(photoPath, caption))
+    override fun onSendPhoto(
+        photoPath: String,
+        caption: String,
+        captionEntities: List<MessageEntity>,
+        sendOptions: MessageSendOptions
+    ) = store.accept(ChatStore.Intent.SendPhoto(photoPath, caption, captionEntities, sendOptions))
 
-    override fun onSendVideo(videoPath: String, caption: String) =
-        store.accept(ChatStore.Intent.SendVideo(videoPath, caption))
+    override fun onSendVideo(
+        videoPath: String,
+        caption: String,
+        captionEntities: List<MessageEntity>,
+        sendOptions: MessageSendOptions
+    ) = store.accept(ChatStore.Intent.SendVideo(videoPath, caption, captionEntities, sendOptions))
 
     override fun onSendGif(gif: GifModel) = store.accept(ChatStore.Intent.SendGif(gif))
-    override fun onSendGifFile(path: String, caption: String) =
-        store.accept(ChatStore.Intent.SendGifFile(path, caption))
+    override fun onSendGifFile(
+        path: String,
+        caption: String,
+        captionEntities: List<MessageEntity>,
+        sendOptions: MessageSendOptions
+    ) = store.accept(ChatStore.Intent.SendGifFile(path, caption, captionEntities, sendOptions))
 
-    override fun onSendAlbum(paths: List<String>, caption: String) =
-        store.accept(ChatStore.Intent.SendAlbum(paths, caption))
+    override fun onSendAlbum(
+        paths: List<String>,
+        caption: String,
+        captionEntities: List<MessageEntity>,
+        sendOptions: MessageSendOptions
+    ) = store.accept(ChatStore.Intent.SendAlbum(paths, caption, captionEntities, sendOptions))
 
     override fun onSendVoice(path: String, duration: Int, waveform: ByteArray) =
         store.accept(ChatStore.Intent.SendVoice(path, duration, waveform))
+
+    override fun onRefreshScheduledMessages() =
+        store.accept(ChatStore.Intent.RefreshScheduledMessages)
+
+    override fun onSendScheduledNow(message: MessageModel) =
+        store.accept(ChatStore.Intent.SendScheduledNow(message))
 
     override fun onVideoRecorded(file: File) = store.accept(ChatStore.Intent.VideoRecorded(file))
 

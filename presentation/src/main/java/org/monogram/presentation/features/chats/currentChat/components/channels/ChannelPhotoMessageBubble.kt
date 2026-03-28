@@ -256,9 +256,11 @@ fun ChannelPhotoMessageBubble(
                                 lineHeight = (fontSize * 1.35f).sp
                             ),
                             onSpoilerClick = { index ->
-                                if (!revealedSpoilers.contains(index)) revealedSpoilers.add(
-                                    index
-                                )
+                                if (revealedSpoilers.contains(index)) {
+                                    revealedSpoilers.remove(index)
+                                } else {
+                                    revealedSpoilers.add(index)
+                                }
                             },
                             onClick = { offset -> onLongClick(imagePosition + offset) },
                             onLongClick = { offset -> onLongClick(imagePosition + offset) }

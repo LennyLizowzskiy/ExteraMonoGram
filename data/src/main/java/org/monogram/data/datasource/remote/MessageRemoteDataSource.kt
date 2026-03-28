@@ -3,12 +3,10 @@ package org.monogram.data.datasource.remote
 import kotlinx.coroutines.flow.Flow
 import org.drinkless.tdlib.TdApi
 import org.monogram.data.datasource.remote.TdMessageRemoteDataSource.DownloadType
-import org.monogram.domain.models.MessageEntity
-import org.monogram.domain.models.MessageModel
-import org.monogram.domain.models.MessageViewerModel
-import org.monogram.domain.models.UserModel
+import org.monogram.domain.models.*
 import org.monogram.domain.models.webapp.ThemeParams
 import org.monogram.domain.models.webapp.WebAppInfoModel
+import org.monogram.domain.repository.OlderMessagesPage
 import org.monogram.domain.repository.ReadUpdate
 import org.monogram.domain.repository.SearchChatMessagesResult
 
@@ -37,14 +35,73 @@ interface MessageRemoteDataSource {
     suspend fun getChatPinnedMessage(chatId: Long): TdApi.Message?
     suspend fun getPollVoters(chatId: Long, messageId: Long, optionId: Int, offset: Int, limit: Int): TdApi.PollVoters?
     suspend fun getMessageViewers(chatId: Long, messageId: Long): TdApi.MessageViewers?
-    suspend fun sendMessage(chatId: Long, text: String, replyToMsgId: Long?, entities: List<MessageEntity>, threadId: Long?): TdApi.Message?
-    suspend fun sendPhoto(chatId: Long, photoPath: String, caption: String, replyToMsgId: Long?, threadId: Long?): TdApi.Message?
-    suspend fun sendVideo(chatId: Long, videoPath: String, caption: String, replyToMsgId: Long?, threadId: Long?): TdApi.Message?
-    suspend fun sendDocument(chatId: Long, documentPath: String, caption: String, replyToMsgId: Long?, threadId: Long?): TdApi.Message?
+    suspend fun sendMessage(
+        chatId: Long,
+        text: String,
+        replyToMsgId: Long?,
+        entities: List<MessageEntity>,
+        threadId: Long?,
+        sendOptions: MessageSendOptions
+    ): TdApi.Message?
+
+    suspend fun sendPhoto(
+        chatId: Long,
+        photoPath: String,
+        caption: String,
+        captionEntities: List<MessageEntity>,
+        replyToMsgId: Long?,
+        threadId: Long?,
+        sendOptions: MessageSendOptions
+    ): TdApi.Message?
+
+    suspend fun sendVideo(
+        chatId: Long,
+        videoPath: String,
+        caption: String,
+        captionEntities: List<MessageEntity>,
+        replyToMsgId: Long?,
+        threadId: Long?,
+        sendOptions: MessageSendOptions
+    ): TdApi.Message?
+
+    suspend fun sendDocument(
+        chatId: Long,
+        documentPath: String,
+        caption: String,
+        captionEntities: List<MessageEntity>,
+        replyToMsgId: Long?,
+        threadId: Long?,
+        sendOptions: MessageSendOptions
+    ): TdApi.Message?
+
     suspend fun sendSticker(chatId: Long, stickerPath: String, replyToMsgId: Long?, threadId: Long?): TdApi.Message?
-    suspend fun sendGif(chatId: Long, gifId: String, replyToMsgId: Long?, threadId: Long?): TdApi.Message?
-    suspend fun sendGifFile(chatId: Long, gifPath: String, caption: String, replyToMsgId: Long?, threadId: Long?): TdApi.Message?
-    suspend fun sendAlbum(chatId: Long, paths: List<String>, caption: String, replyToMsgId: Long?, threadId: Long?): TdApi.Messages?
+    suspend fun sendGif(
+        chatId: Long,
+        gifId: String,
+        replyToMsgId: Long?,
+        threadId: Long?,
+        sendOptions: MessageSendOptions
+    ): TdApi.Message?
+
+    suspend fun sendGifFile(
+        chatId: Long,
+        gifPath: String,
+        caption: String,
+        captionEntities: List<MessageEntity>,
+        replyToMsgId: Long?,
+        threadId: Long?,
+        sendOptions: MessageSendOptions
+    ): TdApi.Message?
+
+    suspend fun sendAlbum(
+        chatId: Long,
+        paths: List<String>,
+        caption: String,
+        captionEntities: List<MessageEntity>,
+        replyToMsgId: Long?,
+        threadId: Long?,
+        sendOptions: MessageSendOptions
+    ): TdApi.Messages?
     suspend fun sendVideoNote(chatId: Long, videoPath: String, duration: Int, length: Int): TdApi.Message?
     suspend fun sendVoiceNote(chatId: Long, voicePath: String, duration: Int, waveform: ByteArray): TdApi.Message?
     suspend fun forwardMessages(toChatId: Long, fromChatId: Long, messageIds: LongArray, removeCaption: Boolean, sendCopy: Boolean): TdApi.Messages?
@@ -71,7 +128,7 @@ interface MessageRemoteDataSource {
     suspend fun markAllMentionsAsRead(chatId: Long)
     suspend fun pinMessage(chatId: Long, messageId: Long, disableNotification: Boolean)
     suspend fun unpinMessage(chatId: Long, messageId: Long)
-    suspend fun saveChatDraft(chatId: Long, text: TdApi.DraftMessage, replyToMsgId: Long?, threadId: Long? = null)
+    suspend fun saveChatDraft(chatId: Long, draft: TdApi.DraftMessage?, replyToMsgId: Long?, threadId: Long? = null)
     suspend fun getChatDraft(chatId: Long, threadId: Long? = null): String?
     fun updateVisibleRange(chatId: Long, visibleIds: List<Long>, nearbyIds: List<Long>)
     suspend fun onCallbackQueryBuy(chatId: Long, messageId: Long)
@@ -99,7 +156,7 @@ interface MessageRemoteDataSource {
         fromMessageId: Long,
         limit: Int,
         threadId: Long? = null
-    ): List<MessageModel>
+    ): OlderMessagesPage
 
     suspend fun getMessagesNewer(
         chatId: Long,
@@ -118,4 +175,6 @@ interface MessageRemoteDataSource {
     suspend fun getPinnedMessageModel(chatId: Long, threadId: Long? = null): MessageModel?
     suspend fun getAllPinnedMessages(chatId: Long, threadId: Long? = null): List<MessageModel>
     suspend fun getPinnedMessageCount(chatId: Long, threadId: Long? = null): Int
+    suspend fun getScheduledMessages(chatId: Long): List<MessageModel>
+    suspend fun sendScheduledNow(chatId: Long, messageId: Long)
 }
