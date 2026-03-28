@@ -10,17 +10,21 @@ import org.monogram.data.db.dao.SponsorDao
 import org.monogram.data.db.model.SponsorEntity
 import org.monogram.data.gateway.TelegramGateway
 import org.monogram.data.mapper.updateSponsorIds
+import org.monogram.domain.repository.AuthRepository
+import org.monogram.domain.repository.AuthStep
 import java.util.concurrent.atomic.AtomicBoolean
 
 private const val TAG = "SponsorSync"
 private const val SPONSOR_CHANNEL_ID = -1003640797855L
 private const val HISTORY_LIMIT = 50
+private const val AUTH_CHECK_INTERVAL_MS = 5L * 60L * 1000L
 private const val ONE_DAY_MS = 24L * 60L * 60L * 1000L
 
 class SponsorSyncManager(
     private val scopeProvider: ScopeProvider,
     private val gateway: TelegramGateway,
-    private val sponsorDao: SponsorDao
+    private val sponsorDao: SponsorDao,
+    private val authRepository: AuthRepository
 ) {
     private val started = AtomicBoolean(false)
     private val syncInProgress = AtomicBoolean(false)
@@ -37,6 +41,17 @@ class SponsorSyncManager(
             syncOnce(force = true)
 
             while (true) {
+                if (authRepository.authState.value !is AuthStep.Ready) {
+                    delay(AUTH_CHECK_INTERVAL_MS)
+                    continue
+                }
+
+                if (sponsorDao.getAllIds().isEmpty()) {
+                    Log.d(TAG, "No sponsors in DB, syncing immediately")
+                    syncOnce(force = true)
+                    continue
+                }
+
                 delay(ONE_DAY_MS)
                 syncOnce(force = false)
             }
@@ -59,6 +74,11 @@ class SponsorSyncManager(
         if (!syncInProgress.compareAndSet(false, true)) return
 
         try {
+            if (authRepository.authState.value !is AuthStep.Ready) {
+                Log.d(TAG, "Skipping sponsor sync: user is not authorized")
+                return
+            }
+
             val latestUpdatedAt = sponsorDao.getLatestUpdatedAt() ?: 0L
             val age = System.currentTimeMillis() - latestUpdatedAt
             if (!force && latestUpdatedAt > 0L && age < ONE_DAY_MS) {

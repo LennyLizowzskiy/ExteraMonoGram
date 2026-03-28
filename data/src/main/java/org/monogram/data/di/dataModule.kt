@@ -57,7 +57,8 @@ val dataModule = module {
         SponsorSyncManager(
             scopeProvider = get(),
             gateway = get(),
-            sponsorDao = get()
+            sponsorDao = get(),
+            authRepository = get()
         )
     }
 
