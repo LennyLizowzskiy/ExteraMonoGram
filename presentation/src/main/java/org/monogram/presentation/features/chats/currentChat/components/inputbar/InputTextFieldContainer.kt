@@ -100,7 +100,9 @@ fun InputTextFieldContainer(
             if (canWriteText) {
                 IconButton(
                     onClick = onOpenFullScreenEditor,
-                    modifier = Modifier.size(36.dp)
+                    modifier = Modifier
+                        .align(Alignment.CenterVertically)
+                        .size(36.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Edit,
