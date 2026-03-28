@@ -635,7 +635,8 @@ fun SettingsContent(component: SettingsComponent) {
                                 subtitle = stringResource(R.string.edit_profile_subtitle),
                                 iconBackgroundColor = blueColor,
                                 position = ItemPosition.BOTTOM,
-                                onClick = component::onEditProfileClicked
+                                onClick = component::onEditProfileClicked,
+                                modifier = Modifier.semantics { contentDescription = "SettingsEditProfile" }
                             )
                         }
                     }
@@ -661,7 +662,8 @@ fun SettingsContent(component: SettingsComponent) {
                             subtitle = stringResource(R.string.chat_settings_subtitle),
                             iconBackgroundColor = blueColor,
                             position = ItemPosition.TOP,
-                            onClick = component::onChatSettingsClicked
+                            onClick = component::onChatSettingsClicked,
+                            modifier = Modifier.semantics { contentDescription = "SettingsChatSettings" }
                         )
                         SettingsItem(
                             icon = Icons.Rounded.Lock,
@@ -669,7 +671,8 @@ fun SettingsContent(component: SettingsComponent) {
                             subtitle = stringResource(R.string.privacy_security_subtitle),
                             iconBackgroundColor = greenColor,
                             position = ItemPosition.MIDDLE,
-                            onClick = component::onPrivacyClicked
+                            onClick = component::onPrivacyClicked,
+                            modifier = Modifier.semantics { contentDescription = "SettingsPrivacy" }
                         )
                         SettingsItem(
                             icon = Icons.Rounded.Notifications,
@@ -677,7 +680,8 @@ fun SettingsContent(component: SettingsComponent) {
                             subtitle = stringResource(R.string.notifications_sounds_subtitle),
                             iconBackgroundColor = pinkColor,
                             position = ItemPosition.MIDDLE,
-                            onClick = component::onNotificationsClicked
+                            onClick = component::onNotificationsClicked,
+                            modifier = Modifier.semantics { contentDescription = "SettingsNotifications" }
                         )
                         SettingsItem(
                             icon = Icons.Rounded.DataUsage,
@@ -685,7 +689,8 @@ fun SettingsContent(component: SettingsComponent) {
                             subtitle = stringResource(R.string.data_storage_subtitle),
                             iconBackgroundColor = tealColor,
                             position = ItemPosition.MIDDLE,
-                            onClick = component::onDataStorageClicked
+                            onClick = component::onDataStorageClicked,
+                            modifier = Modifier.semantics { contentDescription = "SettingsDataStorage" }
                         )
                         SettingsItem(
                             icon = Icons.Rounded.PowerSettingsNew,
@@ -701,7 +706,8 @@ fun SettingsContent(component: SettingsComponent) {
                             subtitle = stringResource(R.string.chat_folders_subtitle),
                             iconBackgroundColor = indigoColor,
                             position = ItemPosition.MIDDLE,
-                            onClick = component::onFoldersClicked
+                            onClick = component::onFoldersClicked,
+                            modifier = Modifier.semantics { contentDescription = "SettingsFolders" }
                         )
                         SettingsItem(
                             icon = Icons.Rounded.SentimentSatisfiedAlt,
@@ -753,7 +759,8 @@ fun SettingsContent(component: SettingsComponent) {
                             subtitle = stringResource(R.string.telegram_premium_subtitle),
                             iconBackgroundColor = purpleColor,
                             position = ItemPosition.TOP,
-                            onClick = component::onPremiumClicked
+                            onClick = component::onPremiumClicked,
+                            modifier = Modifier.semantics { contentDescription = "SettingsPremium" }
                         )
                         SettingsItem(
                             icon = Icons.Rounded.Favorite,

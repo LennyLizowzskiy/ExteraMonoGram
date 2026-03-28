@@ -22,6 +22,8 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.arkivanov.decompose.extensions.compose.subscribeAsState
 import org.monogram.domain.models.MessageContent
@@ -142,6 +144,7 @@ fun ProfileContent(component: ProfileComponent) {
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
+            modifier = Modifier.semantics { contentDescription = "ProfileContent" },
             topBar = {
                 ProfileTopBar(
                     onBack = component::onBack,

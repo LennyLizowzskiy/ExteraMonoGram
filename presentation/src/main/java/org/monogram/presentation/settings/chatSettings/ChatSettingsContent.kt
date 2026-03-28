@@ -14,17 +14,15 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.StickyNote2
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -33,15 +31,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.arkivanov.decompose.extensions.compose.subscribeAsState
 import org.monogram.presentation.R
+import org.monogram.presentation.core.ui.ItemPosition
+import org.monogram.presentation.core.ui.SettingsSwitchTile
+import org.monogram.presentation.core.ui.SettingsTile
 import org.monogram.presentation.core.util.EmojiStyle
 import org.monogram.presentation.core.util.NightMode
 import org.monogram.presentation.features.chats.currentChat.components.chats.getEmojiFontFamily
 import org.monogram.presentation.settings.chatSettings.components.ChatListPreview
 import org.monogram.presentation.settings.chatSettings.components.ChatSettingsPreview
 import org.monogram.presentation.settings.chatSettings.components.WallpaperItem
-import org.monogram.presentation.core.ui.ItemPosition
-import org.monogram.presentation.core.ui.SettingsSwitchTile
-import org.monogram.presentation.core.ui.SettingsTile
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,6 +68,7 @@ fun ChatSettingsContent(component: ChatSettingsComponent) {
     }
 
     Scaffold(
+        modifier = Modifier.semantics { contentDescription = "ChatSettingsContent" },
         topBar = {
             TopAppBar(
                 title = {

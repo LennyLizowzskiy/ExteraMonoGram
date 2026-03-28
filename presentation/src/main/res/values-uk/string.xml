@@ -115,7 +115,6 @@
     <string name="search_section_global">Глобальний пошук</string>
     <string name="search_section_messages">Повідомлення</string>
     <string name="action_show_more">Більше результатів</string>
-    <string name="cd_chat_list">Список чатів</string>
     <string name="search_conversations_placeholder">Пошук чатів…</string>
     <string name="waiting_for_network">Очікування мережі…</string>
     <string name="connecting">Підключення…</string>

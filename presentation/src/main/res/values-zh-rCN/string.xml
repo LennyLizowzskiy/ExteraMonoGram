@@ -115,7 +115,6 @@
     <string name="search_section_global">全局搜索</string>
     <string name="search_section_messages">消息</string>
     <string name="action_show_more">显示更多</string>
-    <string name="cd_chat_list">会话列表</string>
     <string name="search_conversations_placeholder">搜索会话…</string>
     <string name="waiting_for_network">等待网络连接…</string>
     <string name="connecting">正在连接…</string>

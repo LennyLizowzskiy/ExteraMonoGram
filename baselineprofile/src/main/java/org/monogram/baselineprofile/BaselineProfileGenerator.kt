@@ -4,6 +4,7 @@ import androidx.benchmark.macro.junit4.BaselineProfileRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.Direction
+import androidx.test.uiautomator.UiObject2
 import androidx.test.uiautomator.Until
 import org.junit.Rule
 import org.junit.Test
@@ -22,52 +23,95 @@ class BaselineProfileGenerator {
         pressHome()
         startActivityAndWait()
 
-        // Wait for the app to initialize
-        device.wait(Until.hasObject(By.pkg("org.monogram")), 10_000)
+        waitForDesc("ChatList", 10_000)
+        scrollByDesc("ChatList")
+
+        clickByDesc("ChatTitle")
+        waitForDesc("ChatContent")
+        scrollByDesc("ChatMessages")
+
+        clickByDesc("ChatHeaderButton")
+        waitForDesc("ProfileContent")
+        scrollByDesc("ProfileContent")
+        pressBackAndWait()
+
+        pressBackAndWait()
+        waitForDesc("ChatList")
+
+        clickByDesc("Settings")
+        waitForDesc("SettingsContent")
+        scrollByDesc("SettingsList")
+
+        openSettingsSubscreenAndBack(
+            itemDesc = "SettingsChatSettings",
+            screenDesc = "ChatSettingsContent"
+        )
+        openSettingsSubscreenAndBack(
+            itemDesc = "SettingsPrivacy",
+            screenDesc = "PrivacyContent"
+        )
+        openSettingsSubscreenAndBack(
+            itemDesc = "SettingsNotifications",
+            screenDesc = "NotificationsContent"
+        )
+        openSettingsSubscreenAndBack(
+            itemDesc = "SettingsDataStorage",
+            screenDesc = "DataStorageContent"
+        )
+        openSettingsSubscreenAndBack(
+            itemDesc = "SettingsFolders",
+            screenDesc = "FoldersContent"
+        )
+        openSettingsSubscreenAndBack(
+            itemDesc = "SettingsEditProfile",
+            screenDesc = "EditProfileContent"
+        )
+        openSettingsSubscreenAndBack(
+            itemDesc = "SettingsPremium",
+            screenDesc = "PremiumContent"
+        )
+
+        pressBackAndWait()
+        waitForDesc("ChatList")
+    }
+
+    private fun androidx.benchmark.macro.MacrobenchmarkScope.waitForDesc(desc: String, timeout: Long = 5_000) {
+        device.wait(Until.hasObject(By.desc(desc)), timeout)
+        device.waitForIdle()
+    }
+
+    private fun androidx.benchmark.macro.MacrobenchmarkScope.clickByDesc(desc: String) {
+        device.findObject(By.desc(desc))?.click()
+        device.waitForIdle()
+    }
+
+    private fun androidx.benchmark.macro.MacrobenchmarkScope.scrollByDesc(desc: String) {
+        val node = device.findObject(By.desc(desc))
+        node?.fling(Direction.DOWN)
+        device.waitForIdle()
+        node?.fling(Direction.UP)
+        device.waitForIdle()
+    }
+
+    private fun androidx.benchmark.macro.MacrobenchmarkScope.openSettingsSubscreenAndBack(
+        itemDesc: String,
+        screenDesc: String
+    ) {
+        clickByDesc(itemDesc)
+        waitForDesc(screenDesc)
+
+        val scrollable: UiObject2? = device.findObject(By.desc(screenDesc))
+            ?: device.findObject(By.scrollable(true))
+        scrollable?.fling(Direction.DOWN)
+        device.waitForIdle()
+        scrollable?.fling(Direction.UP)
         device.waitForIdle()
 
-        // Scroll through the chat list
-        val chatList = device.findObject(By.desc("ChatList"))
-        chatList?.fling(Direction.DOWN)
-        device.waitForIdle()
-        chatList?.fling(Direction.UP)
-        device.waitForIdle()
+        pressBackAndWait()
+        waitForDesc("SettingsContent")
+    }
 
-        // Click on the first chat
-        val firstChat = device.findObject(By.desc("ChatTitle"))
-        firstChat?.click()
-
-        // Wait for the chat to open
-        device.wait(Until.hasObject(By.desc("ChatContent")), 5_000)
-        device.waitForIdle()
-
-        // Scroll through the chat messages
-        val chatMessages = device.findObject(By.desc("ChatMessages"))
-        chatMessages?.fling(Direction.DOWN)
-        device.waitForIdle()
-        chatMessages?.fling(Direction.UP)
-        device.waitForIdle()
-
-        // Go back to the chat list
-        device.pressBack()
-        device.waitForIdle()
-
-        // Open settings
-        val settingsButton = device.findObject(By.desc("Settings"))
-        settingsButton?.click()
-
-        // Wait for the settings to open
-        device.wait(Until.hasObject(By.desc("SettingsContent")), 5_000)
-        device.waitForIdle()
-
-        // Scroll through the settings
-        val settingsList = device.findObject(By.desc("SettingsList"))
-        settingsList?.fling(Direction.DOWN)
-        device.waitForIdle()
-        settingsList?.fling(Direction.UP)
-        device.waitForIdle()
-
-        // Go back to the chat list
+    private fun androidx.benchmark.macro.MacrobenchmarkScope.pressBackAndWait() {
         device.pressBack()
         device.waitForIdle()
     }

@@ -116,7 +116,6 @@
     <string name="search_section_global">Global search</string>
     <string name="search_section_messages">Messages</string>
     <string name="action_show_more">Show more</string>
-    <string name="cd_chat_list">Chat list</string>
     <string name="search_conversations_placeholder">Search conversations…</string>
     <string name="waiting_for_network">Waiting for network…</string>
     <string name="connecting">Connecting…</string>

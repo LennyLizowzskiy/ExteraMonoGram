@@ -29,6 +29,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -36,6 +38,7 @@ import org.monogram.domain.models.UserModel
 import org.monogram.domain.models.UserStatusType
 import org.monogram.presentation.R
 import org.monogram.presentation.core.ui.Avatar
+import org.monogram.presentation.core.ui.ItemPosition
 import org.monogram.presentation.core.util.FileUtils
 import org.monogram.presentation.core.util.getUserStatusText
 import org.monogram.presentation.features.chats.chatList.components.NewChannelContent
@@ -43,7 +46,6 @@ import org.monogram.presentation.features.chats.chatList.components.NewGroupCont
 import org.monogram.presentation.features.chats.chatList.components.SectionHeader
 import org.monogram.presentation.features.chats.currentChat.components.VideoPlayerPool
 import org.monogram.presentation.features.chats.newChat.NewChatComponent
-import org.monogram.presentation.core.ui.ItemPosition
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,6 +68,7 @@ fun NewChatContent(component: NewChatComponent) {
     }
 
     Scaffold(
+        modifier = Modifier.semantics { contentDescription = "NewChatContent" },
         topBar = {
             AnimatedContent(
                 targetState = isSearchActive,

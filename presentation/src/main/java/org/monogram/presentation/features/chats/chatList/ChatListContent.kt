@@ -746,7 +746,7 @@ fun ChatListContent(component: ChatListComponent) {
                         state = scrollState,
                         modifier = Modifier
                             .fillMaxSize()
-                            .semantics { contentDescription = context.getString(R.string.cd_chat_list) },
+                            .semantics { contentDescription = "ChatList" },
                         contentPadding = PaddingValues(top = 12.dp, bottom = 88.dp),
                     ) {
                         if (state.isSearchActive) {
@@ -1092,7 +1092,7 @@ fun ChatListContent(component: ChatListComponent) {
                                     state = scrollState,
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .semantics { contentDescription = context.getString(R.string.cd_chat_list) },
+                                        .semantics { contentDescription = "ChatList" },
                                     contentPadding = PaddingValues(top = 12.dp, bottom = 88.dp)
                                 ) {
                                     if (folderChats.isEmpty() && hasFolderLoadState && !isFolderLoading) {
