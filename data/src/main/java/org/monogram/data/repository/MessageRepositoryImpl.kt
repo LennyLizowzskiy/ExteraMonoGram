@@ -13,6 +13,7 @@ import org.monogram.data.datasource.cache.ChatLocalDataSource
 import org.monogram.data.datasource.cache.UserLocalDataSource
 import org.monogram.data.datasource.remote.MessageRemoteDataSource
 import org.monogram.data.gateway.TelegramGateway
+import org.monogram.data.infra.FileUpdateHandler
 import org.monogram.data.mapper.MessageMapper
 import org.monogram.data.mapper.map
 import org.monogram.data.mapper.toDomain
@@ -34,14 +35,17 @@ class MessageRepositoryImpl(
     private val dispatcherProvider: DispatcherProvider,
     scopeProvider: ScopeProvider,
     private val chatLocalDataSource: ChatLocalDataSource,
-    private val userLocalDataSource: UserLocalDataSource
+    private val userLocalDataSource: UserLocalDataSource,
+    private val fileUpdateHandler: FileUpdateHandler
 ) : MessageRepository {
     private val scope = scopeProvider.appScope
 
     override val newMessageFlow = messageRemoteDataSource.newMessageFlow
+    override val senderUpdateFlow = messageMapper.senderUpdateFlow
     override val messageEditedFlow = messageRemoteDataSource.messageEditedFlow
     override val messageUploadProgressFlow = messageRemoteDataSource.messageUploadProgressFlow
     override val messageDownloadProgressFlow = messageRemoteDataSource.messageDownloadProgressFlow
+    override val messageDownloadCancelledFlow = messageRemoteDataSource.messageDownloadCancelledFlow
     override val messageReadFlow = messageRemoteDataSource.messageReadFlow
     override val messageDownloadCompletedFlow = messageRemoteDataSource.messageDownloadCompletedFlow
     override val messageDeletedFlow = messageRemoteDataSource.messageDeletedFlow
@@ -67,6 +71,8 @@ class MessageRepositoryImpl(
                                 content = extracted.text,
                                 contentType = extracted.type,
                                 contentMeta = extracted.meta,
+                                mediaFileId = extracted.fileId,
+                                mediaPath = extracted.path,
                                 editDate = 0
                             )
                         }
@@ -113,6 +119,15 @@ class MessageRepositoryImpl(
         scope.launch(dispatcherProvider.io) {
             val ninetyDaysAgo = System.currentTimeMillis() - (90L * 24 * 60 * 60 * 1000)
             chatLocalDataSource.deleteExpired(ninetyDaysAgo)
+        }
+
+        scope.launch {
+            fileUpdateHandler.fileDownloadCompleted.collect { (fileIdLong, path) ->
+                val fileId = fileIdLong.toInt()
+                if (fileId != 0 && path.isNotBlank()) {
+                    chatLocalDataSource.updateMediaPath(fileId, path)
+                }
+            }
         }
     }
 
@@ -450,11 +465,20 @@ class MessageRepositoryImpl(
 
     override fun downloadFile(fileId: Int, priority: Int, offset: Long, limit: Long, synchronous: Boolean) {
         scope.launch {
+            Log.d(
+                "DownloadDebug",
+                "repo.downloadFile: fileId=$fileId priority=$priority offset=$offset limit=$limit sync=$synchronous"
+            )
             fileDataSource.downloadFile(fileId, priority, offset, limit, synchronous)
         }
     }
 
+    override fun invalidateSenderCache(userId: Long) {
+        messageMapper.invalidateSenderCache(userId)
+    }
+
     override suspend fun cancelDownloadFile(fileId: Int) {
+        Log.d("DownloadDebug", "repo.cancelDownloadFile: fileId=$fileId")
         fileDataSource.cancelDownload(fileId)
     }
 
@@ -1223,6 +1247,11 @@ class MessageRepositoryImpl(
             ).joinToString(" ").ifBlank { model.senderName }
 
             val resolvedAvatar = resolveFilePath(cachedUser.profilePhoto?.small)
+            if (resolvedAvatar == null) {
+                cachedUser.profilePhoto?.small?.id?.takeIf { it != 0 }?.let { avatarFileId ->
+                    messageRemoteDataSource.enqueueDownload(avatarFileId, priority = 16)
+                }
+            }
             val emojiId = when (val type = cachedUser.emojiStatus?.type) {
                 is TdApi.EmojiStatusTypeCustomEmoji -> type.customEmojiId
                 is TdApi.EmojiStatusTypeUpgradedGift -> type.modelCustomEmojiId

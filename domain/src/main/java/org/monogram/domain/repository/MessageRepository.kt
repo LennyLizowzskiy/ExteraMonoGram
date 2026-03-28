@@ -35,16 +35,18 @@ data class OlderMessagesPage(
 
 interface MessageRepository {
     val newMessageFlow: Flow<MessageModel>
+    val senderUpdateFlow: Flow<Long>
     val messageReadFlow: Flow<ReadUpdate>
     val messageUploadProgressFlow: Flow<Pair<Long, Float>>
     val messageDownloadProgressFlow: Flow<Pair<Long, Float>>
+    val messageDownloadCancelledFlow: Flow<Long>
     val messageDownloadCompletedFlow: Flow<Pair<Long, String>>
     val messageDeletedFlow: Flow<Pair<Long, List<Long>>>
     val messageEditedFlow: Flow<MessageModel>
     val messageIdUpdateFlow: Flow<Triple<Long, Long, MessageModel>>
     val pinnedMessageFlow: Flow<Long>
     val mediaUpdateFlow: Flow<Unit>
-   suspend fun getHighResFileId(chatId: Long, messageId: Long): Int?
+    suspend fun getHighResFileId(chatId: Long, messageId: Long): Int?
     suspend fun getFileInfo(fileId: Int): FileModel?
     suspend fun getProfileMedia(
         chatId: Long,
@@ -231,6 +233,7 @@ interface MessageRepository {
         limit: Long = 0,
         synchronous: Boolean = false
     )
+    fun invalidateSenderCache(userId: Long)
     suspend fun cancelDownloadFile(fileId: Int)
     suspend fun joinChat(chatId: Long)
     suspend fun restrictChatMember(chatId: Long, userId: Long, permissions: ChatPermissionsModel, untilDate: Int = 0)

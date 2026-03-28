@@ -53,6 +53,7 @@ class FileDownloadQueue(
 
     private val fileDownloadTypes = ConcurrentHashMap<Int, DownloadType>()
     private val manualDownloadIds = ConcurrentHashMap.newKeySet<Int>()
+    private val suppressedAutoDownloadIds = ConcurrentHashMap.newKeySet<Int>()
     private val downloadWaiters = ConcurrentHashMap<Int, CompletableDeferred<Unit>>()
     private val uploadWaiters = ConcurrentHashMap<Int, CompletableDeferred<Unit>>()
     private val lastProgressAt = ConcurrentHashMap<Int, Long>()
@@ -73,6 +74,7 @@ class FileDownloadQueue(
     private val maxVideoParallelDownloads = 3
     private val maxGifParallelDownloads = 2
     private val maxDefaultParallelDownloads = 4
+    private val maxPendingDefaultAutoDownloads = 20
     private val maxStickerParallelDownloads = 5
     private val stickerStallMs = 20_000L
     private val defaultStallMs = 35_000L
@@ -193,6 +195,11 @@ class FileDownloadQueue(
             }
 
             lastProgressAt[fileId] = System.currentTimeMillis()
+
+            Log.d(
+                "DownloadDebug",
+                "queue.processDownload.start: fileId=$fileId priority=${req.priority} type=${req.type} sync=${req.synchronous}"
+            )
 
             val started = withTimeoutOrNull(30000) {
                 gateway.execute(TdApi.DownloadFile(fileId, req.priority, req.offset, req.limit, req.synchronous))
@@ -457,6 +464,7 @@ class FileDownloadQueue(
     fun setChatOpened(chatId: Long) {
         openChatIds.add(chatId)
         activeChatId = chatId
+        flushIrrelevantBackgroundDownloads()
     }
 
     fun setChatClosed(chatId: Long) {
@@ -491,9 +499,23 @@ class FileDownloadQueue(
         type: DownloadType = DownloadType.DEFAULT,
         offset: Long = 0,
         limit: Long = 0,
-        synchronous: Boolean = false
+        synchronous: Boolean = false,
+        ignoreSuppression: Boolean = false
     ) {
+        Log.d(
+            "DownloadDebug",
+            "queue.enqueue: fileId=$fileId priority=$priority type=$type offset=$offset limit=$limit sync=$synchronous ignoreSuppression=$ignoreSuppression suppressed=${
+                suppressedAutoDownloadIds.contains(
+                    fileId
+                )
+            }"
+        )
         scope.appScope.launch(dispatcherProvider.default) {
+            if (!ignoreSuppression && suppressedAutoDownloadIds.contains(fileId)) {
+                Log.d("DownloadDebug", "queue.enqueue.skippedBySuppression: fileId=$fileId")
+                return@launch
+            }
+
             val isManualRequest = priority >= 32
             if (isManualRequest) manualDownloadIds.add(fileId)
 
@@ -506,7 +528,9 @@ class FileDownloadQueue(
             }
 
             if (registry.getMessages(fileId).isEmpty()) registry.standaloneFileIds.add(fileId)
-            fileDownloadTypes[fileId] = type
+            if (type != DownloadType.DEFAULT || !fileDownloadTypes.containsKey(fileId)) {
+                fileDownloadTypes[fileId] = type
+            }
 
             val cached = cache.fileCache[fileId]
             if (cached?.local?.isDownloadingCompleted == true) {
@@ -515,15 +539,21 @@ class FileDownloadQueue(
                 return@launch
             }
 
-            val finalOffset = if (type == DownloadType.STICKER || type == DownloadType.VIDEO_NOTE) 0L else offset
-            val finalLimit = if (type == DownloadType.STICKER || type == DownloadType.VIDEO_NOTE) 0L else limit
+            val resolvedType = if (type == DownloadType.DEFAULT) {
+                fileDownloadTypes[fileId] ?: DownloadType.DEFAULT
+            } else {
+                type
+            }
+
+            val finalOffset = if (resolvedType == DownloadType.STICKER || resolvedType == DownloadType.VIDEO_NOTE) 0L else offset
+            val finalLimit = if (resolvedType == DownloadType.STICKER || resolvedType == DownloadType.VIDEO_NOTE) 0L else limit
 
             val prio = calculatePriority(fileId).coerceAtLeast(priority)
             val isManual = manualDownloadIds.contains(fileId)
             val req = DownloadRequest(
                 fileId = fileId,
                 priority = prio,
-                type = type,
+                type = resolvedType,
                 offset = finalOffset,
                 limit = finalLimit,
                 synchronous = synchronous,
@@ -561,6 +591,18 @@ class FileDownloadQueue(
                 if (pending != null) {
                     pendingRequests[fileId] = mergeRequests(pending, req)
                 } else {
+                    if (!isManual && resolvedType == DownloadType.DEFAULT) {
+                        val pendingDefaultCount = pendingRequests.values.count {
+                            !it.isManual && it.type == DownloadType.DEFAULT
+                        }
+                        if (pendingDefaultCount >= maxPendingDefaultAutoDownloads) {
+                            Log.d(
+                                "DownloadDebug",
+                                "queue.enqueue.skippedDefaultCap: fileId=$fileId pendingDefault=$pendingDefaultCount cap=$maxPendingDefaultAutoDownloads"
+                            )
+                            return@launch
+                        }
+                    }
                     pendingRequests[fileId] = req
                 }
             }
@@ -568,12 +610,17 @@ class FileDownloadQueue(
         }
     }
 
-    fun cancelDownload(fileId: Int, force: Boolean = false) {
+    fun cancelDownload(fileId: Int, force: Boolean = false, suppress: Boolean = true) {
         if (!force && manualDownloadIds.contains(fileId)) return
+
+        Log.d("DownloadDebug", "queue.cancel: fileId=$fileId force=$force suppress=$suppress")
+        if (suppress) {
+            suppressedAutoDownloadIds.add(fileId)
+        }
 
         scope.appScope.launch(dispatcherProvider.io) {
             try {
-                gateway.execute(TdApi.CancelDownloadFile(fileId, true))
+                gateway.execute(TdApi.CancelDownloadFile(fileId, false))
             } catch (_: Exception) {
             }
 
@@ -582,7 +629,14 @@ class FileDownloadQueue(
                 activeRequests.remove(fileId)
                 failedRequests.remove(fileId)
             }
+            Log.d("DownloadDebug", "queue.cancel.cleared: fileId=$fileId")
             notifyDownloadCancelled(fileId)
+        }
+    }
+
+    fun clearSuppression(fileId: Int) {
+        if (suppressedAutoDownloadIds.remove(fileId)) {
+            Log.d("DownloadDebug", "queue.suppression.cleared: fileId=$fileId")
         }
     }
 
@@ -679,11 +733,37 @@ class FileDownloadQueue(
             for ((fileId, _) in pendingRequests) {
                 if (!isStillRelevant(fileId)) toCancel.add(fileId)
             }
-            for ((fileId, _) in activeRequests) {
-                if (!isStillRelevant(fileId)) toCancel.add(fileId)
+
+            toCancel.forEach { fileId -> cancelDownload(fileId, force = false, suppress = false) }
+        }
+    }
+
+    private fun flushIrrelevantBackgroundDownloads() {
+        scope.appScope.launch(dispatcherProvider.default) {
+            val toCancel = mutableListOf<Int>()
+
+            stateMutex.withLock {
+                val candidateIds = HashSet<Int>(pendingRequests.size + activeRequests.size)
+                candidateIds.addAll(pendingRequests.keys)
+                candidateIds.addAll(activeRequests.keys)
+
+                candidateIds.forEach { fileId ->
+                    if (manualDownloadIds.contains(fileId)) return@forEach
+
+                    val type = fileDownloadTypes[fileId]
+                    if (type == DownloadType.STICKER || type == DownloadType.VIDEO_NOTE) return@forEach
+
+                    val belongsToOpenChat = registry.getMessages(fileId).any { (chatId, _) ->
+                        openChatIds.contains(chatId)
+                    }
+
+                    if (!belongsToOpenChat) {
+                        toCancel.add(fileId)
+                    }
+                }
             }
 
-            toCancel.forEach { fileId -> cancelDownload(fileId, force = false) }
+            toCancel.forEach { fileId -> cancelDownload(fileId, force = false, suppress = false) }
         }
     }
 }
