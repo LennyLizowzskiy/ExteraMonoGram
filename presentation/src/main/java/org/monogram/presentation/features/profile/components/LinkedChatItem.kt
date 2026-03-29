@@ -1,6 +1,5 @@
 package org.monogram.presentation.features.profile.components
 
-
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -33,14 +32,13 @@ fun LinkedChatItem(
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 8.dp),
-        onClick =  onClick
-
+        onClick = onClick
     ) {
         Row(
             modifier = Modifier
                 .padding(12.dp)
                 .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.Top
         ) {
             Avatar(
                 path = chat.avatarPath,
@@ -58,7 +56,7 @@ fun LinkedChatItem(
                     text = chat.title,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
                 val subtitle = buildString {
@@ -75,31 +73,27 @@ fun LinkedChatItem(
                         text = subtitle,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
             }
 
+            Spacer(modifier = Modifier.width(12.dp))
 
+            Surface(
+                color = MaterialTheme.colorScheme.primaryContainer,
+                shape = CircleShape,
+                modifier = Modifier.padding(top = 4.dp)
+            ) {
+                Text(
+                    text = if (isDiscussion) stringResource(R.string.label_discussion) else stringResource(R.string.label_channel),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
-        Box(Modifier.fillMaxHeight()) {
-             Surface(
-                 color = MaterialTheme.colorScheme.primaryContainer,
-                 shape = CircleShape,
-                 modifier = Modifier
-                     .padding(end = 16.dp, top = 16.dp)
-                     .align(Alignment.TopEnd)
-
-             ) {
-                 Text(
-                     text = if (isDiscussion) stringResource(R.string.label_discussion) else stringResource(R.string.label_channel),
-                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                     style = MaterialTheme.typography.labelSmall,
-                     color = MaterialTheme.colorScheme.onPrimaryContainer,
-                     fontWeight = FontWeight.Bold
-                 )
-             }
-         }
     }
 }
