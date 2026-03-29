@@ -17,7 +17,6 @@ import org.monogram.data.datasource.PlayerDataSourceFactoryImpl
 import org.monogram.data.datasource.TdFileDataSource
 import org.monogram.data.datasource.cache.*
 import org.monogram.data.datasource.remote.*
-import org.monogram.data.db.MIGRATION_25_26
 import org.monogram.data.db.MonogramDatabase
 import org.monogram.data.gateway.TelegramGateway
 import org.monogram.data.gateway.TelegramGatewayImpl
@@ -114,7 +113,6 @@ val dataModule = module {
             "monogram_db"
         )
             .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
-            .addMigrations(MIGRATION_25_26)
             .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
     }
