@@ -1,6 +1,5 @@
 package org.monogram.presentation.core.ui
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
@@ -14,9 +13,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import coil3.compose.rememberAsyncImagePainter
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
+import coil3.size.Precision
+import coil3.size.Size
 import org.monogram.presentation.core.util.generateColorFromHash
 import org.monogram.presentation.features.chats.currentChat.components.AvatarPlayer
 import org.monogram.presentation.features.chats.currentChat.components.VideoPlayerPool
@@ -34,6 +38,7 @@ fun AvatarHeader(
     avatarCornerPercent: Int = 0,
     videoPlayerPool: VideoPlayerPool
 ) {
+    val context = LocalContext.current
     val combinedModifier = modifier
         .size(size)
         .clip(RoundedCornerShape(percent = avatarCornerPercent))
@@ -57,8 +62,13 @@ fun AvatarHeader(
                 }
 
                 else -> {
-                    Image(
-                        painter = rememberAsyncImagePainter(avatarFile),
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(avatarFile)
+                            .size(Size.ORIGINAL)
+                            .precision(Precision.EXACT)
+                            .crossfade(true)
+                            .build(),
                         contentDescription = null,
                         modifier = Modifier.matchParentSize(),
                         contentScale = ContentScale.Crop

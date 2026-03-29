@@ -608,41 +608,85 @@ class DefaultProfileComponent(
     }
 
     override fun onAvatarClick() {
-        val photos = _state.value.profilePhotos
-        if (photos.isNotEmpty()) {
-            val firstPhoto = photos.first()
-            if (firstPhoto.endsWith(".mp4", ignoreCase = true)) {
-                _state.update {
-                    it.copy(
-                        fullScreenVideoPath = firstPhoto,
-                        fullScreenVideoCaption = null
-                    )
-                }
-            } else {
-                _state.update {
-                    it.copy(
-                        fullScreenImages = photos.filter { !it.endsWith(".mp4", ignoreCase = true) },
-                        fullScreenCaptions = photos.map { null },
-                        fullScreenStartIndex = 0,
-                        isViewingProfilePhotos = true
-                    )
-                }
-            }
+        val snapshot = _state.value
+        val initialPhotos = snapshot.profilePhotos
+
+        if (initialPhotos.isNotEmpty()) {
+            openProfilePhotos(initialPhotos)
         } else {
-            val avatarPath =
-                _state.value.personalAvatarPath ?: _state.value.chat?.avatarPath
-                ?: _state.value.user?.avatarPath
-            avatarPath?.let { path ->
-                _state.update {
-                    it.copy(
-                        fullScreenImages = listOf(path),
-                        fullScreenCaptions = listOf(null),
-                        fullScreenStartIndex = 0,
-                        isViewingProfilePhotos = true
+            val avatarPath = snapshot.personalAvatarPath
+                ?: snapshot.chat?.avatarPath
+                ?: snapshot.user?.avatarPath
+            avatarPath?.let { openProfilePhotos(listOf(it)) }
+        }
+
+        val userId = snapshot.user?.id?.takeIf { it > 0 } ?: snapshot.chatId.takeIf { it > 0 }
+        if (userId == null) return
+
+        scope.launch {
+            _state.update { it.copy(isProfilePhotoHdLoading = true) }
+            try {
+                val refreshedPhotos = runCatching {
+                    userRepository.getUserProfilePhotos(
+                        userId = userId,
+                        offset = 0,
+                        limit = 10,
+                        ensureFullRes = true
                     )
+                }.getOrDefault(emptyList())
+
+                if (refreshedPhotos.isEmpty()) return@launch
+
+                _state.update { current ->
+                    val next = current.copy(profilePhotos = refreshedPhotos)
+                    val viewerIsOpen = current.fullScreenImages != null || current.fullScreenVideoPath != null
+                    if (!viewerIsOpen) {
+                        next
+                    } else {
+                        applyProfilePhotosToViewer(next, refreshedPhotos)
+                    }
                 }
+            } finally {
+                _state.update { it.copy(isProfilePhotoHdLoading = false) }
             }
         }
+    }
+
+    private fun openProfilePhotos(photos: List<String>) {
+        if (photos.isEmpty()) return
+        _state.update { current ->
+            applyProfilePhotosToViewer(current, photos)
+        }
+    }
+
+    private fun applyProfilePhotosToViewer(
+        state: ProfileComponent.State,
+        photos: List<String>
+    ): ProfileComponent.State {
+        val firstPhoto = photos.firstOrNull() ?: return state
+        if (firstPhoto.endsWith(".mp4", ignoreCase = true)) {
+            return state.copy(
+                fullScreenVideoPath = firstPhoto,
+                fullScreenVideoCaption = null,
+                fullScreenImages = null,
+                fullScreenCaptions = emptyList(),
+                fullScreenStartIndex = 0,
+                isViewingProfilePhotos = true
+            )
+        }
+
+        val images = photos.filter { !it.endsWith(".mp4", ignoreCase = true) }
+        if (images.isEmpty()) return state
+
+        val safeIndex = state.fullScreenStartIndex.coerceIn(0, images.lastIndex)
+        return state.copy(
+            fullScreenImages = images,
+            fullScreenCaptions = images.map { null },
+            fullScreenStartIndex = safeIndex,
+            fullScreenVideoPath = null,
+            fullScreenVideoCaption = null,
+            isViewingProfilePhotos = true
+        )
     }
 
     override fun onDismissViewer() {
@@ -652,7 +696,8 @@ class DefaultProfileComponent(
                 fullScreenCaptions = emptyList(),
                 fullScreenVideoPath = null,
                 fullScreenVideoCaption = null,
-                isViewingProfilePhotos = false
+                isViewingProfilePhotos = false,
+                isProfilePhotoHdLoading = false
             )
         }
     }

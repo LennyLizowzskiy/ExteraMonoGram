@@ -9,8 +9,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -56,9 +55,9 @@ fun ProfileContent(component: ProfileComponent) {
     val avatarPath = remember(state.profilePhotos, state.chat, state.user, state.personalAvatarPath) {
         state.personalAvatarPath
             ?: state.profilePhotos.firstOrNull()
+            ?: state.user?.avatarPath
             ?: state.chat?.personalAvatarPath
             ?: state.chat?.avatarPath
-            ?: state.user?.avatarPath
     }
 
 
@@ -308,40 +307,69 @@ fun ProfileContent(component: ProfileComponent) {
             exit = fadeOut() + scaleOut(targetScale = 0.9f)
         ) {
             state.fullScreenImages?.let { images ->
-                ImageViewer(
-                    images = images,
-                    startIndex = state.fullScreenStartIndex,
-                    onDismiss = component::onDismissViewer,
-                    autoDownload = true,
-                    downloadUtils = component.downloadUtils,
-                    onPageChanged = { index ->
+                Box(modifier = Modifier.fillMaxSize()) {
+                    ImageViewer(
+                        images = images,
+                        startIndex = state.fullScreenStartIndex,
+                        onDismiss = component::onDismissViewer,
+                        autoDownload = true,
+                        downloadUtils = component.downloadUtils,
+                        onPageChanged = { index ->
 
-                        if (!state.isViewingProfilePhotos && state.canLoadMoreMedia && !state.isLoadingMoreMedia &&
-                            index >= images.size - 5) {
-                            component.onLoadMoreMedia()
-                        }
+                            if (!state.isViewingProfilePhotos && state.canLoadMoreMedia && !state.isLoadingMoreMedia &&
+                                index >= images.size - 5
+                            ) {
+                                component.onLoadMoreMedia()
+                            }
 
-                        if (!state.isViewingProfilePhotos) {
-                            val photoMessages = state.mediaMessages.filter { it.content is MessageContent.Photo }
+                            if (!state.isViewingProfilePhotos) {
+                                val photoMessages = state.mediaMessages.filter { it.content is MessageContent.Photo }
 
-                            val message = photoMessages.getOrNull(index)
-                            if (message != null) {
-                                component.onDownloadMedia(message)
+                                val message = photoMessages.getOrNull(index)
+                                if (message != null) {
+                                    component.onDownloadMedia(message)
 
-                                val nextMessage = photoMessages.getOrNull(index + 1)
-                                if (nextMessage != null) {
-                                    component.onDownloadMedia(nextMessage)
+                                    val nextMessage = photoMessages.getOrNull(index + 1)
+                                    if (nextMessage != null) {
+                                        component.onDownloadMedia(nextMessage)
+                                    }
                                 }
                             }
+                        },
+                        onForward = { Toast.makeText(context, notImplemented, Toast.LENGTH_SHORT).show() },
+                        onDelete = { Toast.makeText(context, notImplemented, Toast.LENGTH_SHORT).show() },
+                        onCopyLink = { Toast.makeText(context, notImplemented, Toast.LENGTH_SHORT).show() },
+                        onCopyText = { Toast.makeText(context, notImplemented, Toast.LENGTH_SHORT).show() },
+                        captions = state.fullScreenCaptions.filterNotNull(),
+                        showImageNumber = false
+                    )
+
+                    if (state.isViewingProfilePhotos && state.isProfilePhotoHdLoading) {
+                        Surface(
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .padding(top = 56.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.92f)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                CircularProgressIndicator(
+                                    strokeWidth = 2.dp,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    text = "Loading HD",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
                         }
-                    },
-                    onForward = { Toast.makeText(context, notImplemented, Toast.LENGTH_SHORT).show() },
-                    onDelete = { Toast.makeText(context, notImplemented, Toast.LENGTH_SHORT).show() },
-                    onCopyLink = { Toast.makeText(context, notImplemented, Toast.LENGTH_SHORT).show() },
-                    onCopyText = { Toast.makeText(context, notImplemented, Toast.LENGTH_SHORT).show() },
-                    captions = state.fullScreenCaptions.filterNotNull(),
-                    showImageNumber = false
-                )
+                    }
+                }
             }
         }
 

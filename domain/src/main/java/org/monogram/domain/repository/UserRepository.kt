@@ -11,7 +11,12 @@ interface UserRepository {
     suspend fun getUser(userId: Long): UserModel?
     suspend fun getUserFullInfo(userId: Long): UserModel?
     fun getUserFlow(userId: Long): Flow<UserModel?>
-    suspend fun getUserProfilePhotos(userId: Long, offset: Int = 0, limit: Int = 10): List<String>
+    suspend fun getUserProfilePhotos(
+        userId: Long,
+        offset: Int = 0,
+        limit: Int = 10,
+        ensureFullRes: Boolean = false
+    ): List<String>
     fun getUserProfilePhotosFlow(userId: Long): Flow<List<String>>
 
     suspend fun getChatFullInfo(chatId: Long): ChatFullInfoModel?

@@ -96,6 +96,7 @@ interface ProfileComponent {
         val fullScreenVideoPath: String? = null,
         val fullScreenVideoCaption: String? = null,
         val isViewingProfilePhotos: Boolean = false,
+        val isProfilePhotoHdLoading: Boolean = false,
 
         val miniAppUrl: String? = null,
         val miniAppName: String? = null,

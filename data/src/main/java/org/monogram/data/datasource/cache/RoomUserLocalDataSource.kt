@@ -112,7 +112,8 @@ class RoomUserLocalDataSource(
             firstName = firstName,
             lastName = lastName.ifEmpty { null },
             phoneNumber = phoneNumber.ifEmpty { null },
-            avatarPath = profilePhoto?.small?.local?.path?.ifEmpty { null },
+            avatarPath = profilePhoto?.big?.local?.path?.ifEmpty { null }
+                ?: profilePhoto?.small?.local?.path?.ifEmpty { null },
             personalAvatarPath = personalAvatarPath,
             isPremium = isPremium,
             isVerified = verificationStatus?.isVerified ?: false,
@@ -134,7 +135,9 @@ class RoomUserLocalDataSource(
     }
 
     private fun TdApi.UserFullInfo.extractPersonalAvatarPath(): String? {
+        val bestPhotoSize = personalPhoto?.sizes?.maxByOrNull { it.width.toLong() * it.height.toLong() }
+            ?: personalPhoto?.sizes?.lastOrNull()
         return personalPhoto?.animation?.file?.local?.path?.ifEmpty { null }
-            ?: personalPhoto?.sizes?.lastOrNull()?.photo?.local?.path?.ifEmpty { null }
+            ?: bestPhotoSize?.photo?.local?.path?.ifEmpty { null }
     }
 }

@@ -1,11 +1,8 @@
 package org.monogram.data.repository
 
-import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.launch
 import org.drinkless.tdlib.TdApi
 import org.monogram.core.ScopeProvider
 import org.monogram.data.datasource.cache.ChatLocalDataSource
@@ -268,10 +265,10 @@ class UserRepositoryImpl(
         val resolvedBigPath = resolveDownloadedFilePath(bigPhoto?.id)
         if (resolvedBigPath != null) return resolvedBigPath
 
-        smallPhoto?.id?.takeIf { it != 0 }?.let {
+        bigPhoto?.id?.takeIf { it != 0 }?.let {
             fileQueue.enqueue(it, avatarDownloadPriority, FileDownloadQueue.DownloadType.DEFAULT, synchronous = false)
         }
-        bigPhoto?.id?.takeIf { it != 0 }?.let {
+        smallPhoto?.id?.takeIf { it != 0 }?.let {
             fileQueue.enqueue(it, avatarFallbackPriority, FileDownloadQueue.DownloadType.DEFAULT, synchronous = false)
         }
 
@@ -295,18 +292,48 @@ class UserRepositoryImpl(
             .collect { emit(getUser(userId)) }
     }
 
-    override suspend fun getUserProfilePhotos(userId: Long, offset: Int, limit: Int): List<String> {
+    override suspend fun getUserProfilePhotos(
+        userId: Long,
+        offset: Int,
+        limit: Int,
+        ensureFullRes: Boolean
+    ): List<String> {
         if (userId <= 0) return emptyList()
         val result = remote.getUserProfilePhotos(userId, offset, limit) ?: return emptyList()
-        return result.photos.mapNotNull { photo ->
-            val big = photo.sizes.lastOrNull()
-            val animation = photo.animation
-            when {
-                animation != null && animation.file.local.path.isNotEmpty() -> animation.file.local.path
-                big != null && big.photo.local.path.isNotEmpty() -> big.photo.local.path
-                else -> null
-            }
+        return result.photos.mapNotNull { photo -> resolveUserProfilePhotoPath(photo, ensureFullRes) }
+    }
+
+    private suspend fun resolveUserProfilePhotoPath(
+        photo: TdApi.ChatPhoto,
+        ensureFullRes: Boolean
+    ): String? {
+        val animationFile = photo.animation?.file
+        val animationPath = animationFile?.local?.path?.ifEmpty { null }
+        if (animationPath != null) return animationPath
+
+        val bestPhotoFile = photo.sizes
+            .maxByOrNull { it.width.toLong() * it.height.toLong() }
+            ?.photo
+            ?: photo.sizes.lastOrNull()?.photo
+            ?: return null
+
+        val directPath = bestPhotoFile.local.path.ifEmpty { null }
+        if (directPath != null) return directPath
+
+        if (!ensureFullRes) return null
+
+        val fileId = bestPhotoFile.id.takeIf { it != 0 } ?: return null
+        fileQueue.enqueue(
+            fileId = fileId,
+            priority = 32,
+            type = FileDownloadQueue.DownloadType.DEFAULT,
+            synchronous = false,
+            ignoreSuppression = true
+        )
+        withTimeoutOrNull(15_000) {
+            runCatching { fileQueue.waitForDownload(fileId).await() }
         }
+        return resolveDownloadedFilePath(fileId)
     }
 
     override fun getUserProfilePhotosFlow(userId: Long): Flow<List<String>> = flow {
@@ -391,8 +418,10 @@ class UserRepositoryImpl(
     }
 
     private fun TdApi.UserFullInfo.extractPersonalAvatarPath(): String? {
+        val bestPhotoSize = personalPhoto?.sizes?.maxByOrNull { it.width.toLong() * it.height.toLong() }
+            ?: personalPhoto?.sizes?.lastOrNull()
         return personalPhoto?.animation?.file?.local?.path?.ifEmpty { null }
-            ?: personalPhoto?.sizes?.lastOrNull()?.photo?.local?.path?.ifEmpty { null }
+            ?: bestPhotoSize?.photo?.local?.path?.ifEmpty { null }
     }
 
     private suspend fun fetchAndCacheUser(userId: Long): TdApi.User? {

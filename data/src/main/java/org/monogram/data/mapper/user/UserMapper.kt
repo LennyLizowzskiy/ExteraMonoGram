@@ -19,8 +19,10 @@ fun TdApi.User.toDomain(
     val username = usernames?.activeUsernames?.firstOrNull()
 
     val personalAvatarPath = fullInfo?.personalPhoto?.let { personalPhoto ->
+        val bestPhotoSize = personalPhoto.sizes.maxByOrNull { it.width.toLong() * it.height.toLong() }
+            ?: personalPhoto.sizes.lastOrNull()
         personalPhoto.animation?.file?.local?.path?.ifEmpty { null }
-            ?: personalPhoto.sizes.lastOrNull()?.photo?.local?.path?.ifEmpty { null }
+            ?: bestPhotoSize?.photo?.local?.path?.ifEmpty { null }
     }
 
     val lastSeen = (status as? TdApi.UserStatusOffline)
@@ -339,7 +341,8 @@ fun TdApi.UserFullInfo.toEntity(userId: Long): UserFullInfoEntity {
     val businessStartPage = businessInfo?.startPage
     val birth = birthdate
     val personalPhotoPath = personalPhoto?.animation?.file?.local?.path?.ifEmpty { null }
-        ?: personalPhoto?.sizes?.lastOrNull()?.photo?.local?.path?.ifEmpty { null }
+        ?: (personalPhoto?.sizes?.maxByOrNull { it.width.toLong() * it.height.toLong() }
+            ?: personalPhoto?.sizes?.lastOrNull())?.photo?.local?.path?.ifEmpty { null }
 
     return UserFullInfoEntity(
         userId = userId,
