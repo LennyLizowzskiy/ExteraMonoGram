@@ -9,6 +9,8 @@ class ChatCache : ChatsCacheDataSource, UserCacheDataSource {
     // Chats and their positions in lists
     val allChats = ConcurrentHashMap<Long, TdApi.Chat>()
     val activeListPositions = ConcurrentHashMap<Long, TdApi.ChatPosition>()
+    val authoritativeActiveListChatIds = ConcurrentHashMap.newKeySet<Long>()
+    val protectedPinnedChatIds = ConcurrentHashMap.newKeySet<Long>()
     val onlineMemberCount = ConcurrentHashMap<Long, Int>()
 
     // Messages: ChatId -> (MessageId -> Message)
@@ -250,6 +252,8 @@ class ChatCache : ChatsCacheDataSource, UserCacheDataSource {
     override fun clearAll() {
         allChats.clear()
         activeListPositions.clear()
+        authoritativeActiveListChatIds.clear()
+        protectedPinnedChatIds.clear()
         onlineMemberCount.clear()
         messages.clear()
         usersCache.clear()
@@ -278,6 +282,10 @@ class ChatCache : ChatsCacheDataSource, UserCacheDataSource {
     fun putChatFromEntity(entity: org.monogram.data.db.model.ChatEntity) {
         val chatList = if (entity.isArchived) TdApi.ChatListArchive() else TdApi.ChatListMain()
         val cachedPositions = parsePositionsCache(entity.positionsCache)
+        val restoredLastMessageDate = when {
+            entity.lastMessageDate > 0L -> entity.lastMessageDate
+            else -> entity.lastMessageTime.toLongOrNull() ?: 0L
+        }
         val chat = TdApi.Chat().apply {
             id = entity.id
             title = entity.title
@@ -331,7 +339,7 @@ class ChatCache : ChatsCacheDataSource, UserCacheDataSource {
                     else -> TdApi.MessageText()
                         .apply { text = TdApi.FormattedText(entity.lastMessageText, emptyArray()) }
                 }
-                date = entity.lastMessageTime.toIntOrNull() ?: 0
+                date = restoredLastMessageDate.toInt()
                 id = entity.lastMessageId
                 isOutgoing = entity.isLastMessageOutgoing
             }

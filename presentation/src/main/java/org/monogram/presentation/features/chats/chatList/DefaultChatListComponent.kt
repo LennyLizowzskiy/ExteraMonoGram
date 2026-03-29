@@ -1,5 +1,6 @@
 package org.monogram.presentation.features.chats.chatList
 
+import android.util.Log
 import com.arkivanov.decompose.value.Value
 import com.arkivanov.mvikotlin.core.instancekeeper.getStore
 import com.arkivanov.mvikotlin.extensions.coroutines.stateFlow
@@ -57,7 +58,6 @@ class DefaultChatListComponent(
     private var searchJob: Job? = null
     private var isFetchingMoreMessages = false
     private var nextMessagesOffset = ""
-    @Volatile private var repositoryFolderId: Int = -1
 
     init {
         activeChatId.subscribe { id ->
@@ -76,13 +76,21 @@ class DefaultChatListComponent(
             repositoryUser.getMe()
         }
 
-        repository.chatListFlow
-            .onEach { list ->
-                val distinctList = list.distinctBy { it.id }
-                val folderId = repositoryFolderId
+        repository.folderChatsFlow
+            .onEach { update ->
+                val distinctList = update.chats.distinctBy { it.id }
+                val pinnedCount = distinctList.count { it.isPinned }
+                if (pinnedCount > 0) {
+                    Log.d(
+                        TAG,
+                        "folder=${update.folderId} chats=${distinctList.size} pinned=$pinnedCount pinnedIds=${
+                            distinctList.filter { it.isPinned }.take(10).joinToString { it.id.toString() }
+                        }"
+                    )
+                }
                 _state.update {
                     val newChatsByFolder = it.chatsByFolder.toMutableMap()
-                    newChatsByFolder[folderId] = distinctList
+                    newChatsByFolder[update.folderId] = distinctList
                     it.copy(chatsByFolder = newChatsByFolder)
                 }
             }
@@ -94,12 +102,11 @@ class DefaultChatListComponent(
             }
             .launchIn(scope)
 
-        repository.isLoadingFlow
-            .onEach { isLoading ->
-                val folderId = repositoryFolderId
+        repository.folderLoadingFlow
+            .onEach { update ->
                 _state.update {
                     val newLoadingByFolder = it.isLoadingByFolder.toMutableMap()
-                    newLoadingByFolder[folderId] = isLoading
+                    newLoadingByFolder[update.folderId] = update.isLoading
                     it.copy(isLoadingByFolder = newLoadingByFolder)
                 }
             }
@@ -172,7 +179,9 @@ class DefaultChatListComponent(
             store.accept(ChatListStore.Intent.UpdateState(it))
         }.launchIn(scope)
 
-        loadMore()
+        scope.launch(Dispatchers.IO) {
+            repository.selectFolder(_state.value.selectedFolderId)
+        }
     }
 
     private suspend fun updateProxyStatus() {
@@ -188,7 +197,6 @@ class DefaultChatListComponent(
     override fun onFolderClicked(id: Int) {
         if (_state.value.selectedFolderId == id) return
 
-        repositoryFolderId = id
         _state.update {
             val loadingByFolder = it.isLoadingByFolder.toMutableMap()
             loadingByFolder[id] = true
@@ -495,14 +503,8 @@ class DefaultChatListComponent(
         }
     }
 
-    override fun onResume() {
-        val selectedFolderId = _state.value.selectedFolderId
-        repositoryFolderId = selectedFolderId
-
-        scope.launch(Dispatchers.IO) {
-            repository.selectFolder(selectedFolderId)
-            repository.refresh()
-        }
+    companion object {
+        private const val TAG = "PinnedUiDiag"
     }
 
     private fun toggleSelection(id: Long) {

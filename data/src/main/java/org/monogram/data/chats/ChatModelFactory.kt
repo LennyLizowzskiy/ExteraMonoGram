@@ -231,6 +231,7 @@ class ChatModelFactory(
             lastMessageText = txt,
             lastMessageEntities = entities,
             lastMessageTime = time,
+            lastMessageDate = chat.lastMessage?.date?.toLong() ?: 0L,
             isMuted = isMuted,
             isAdmin = isAdmin,
             isMember = isMember,

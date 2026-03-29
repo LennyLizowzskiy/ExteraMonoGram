@@ -33,6 +33,7 @@ import org.monogram.domain.models.TopicModel
 import org.monogram.domain.repository.*
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicLong
 
 class ChatsListRepositoryImpl(
     private val remoteDataSource: ChatsRemoteDataSource,
@@ -96,11 +97,25 @@ class ChatsListRepositoryImpl(
     private val _chatListFlow = MutableStateFlow<List<ChatModel>>(emptyList())
     override val chatListFlow = _chatListFlow.asStateFlow()
 
+    private val _folderChatsFlow = MutableSharedFlow<FolderChatsUpdate>(
+        replay = 1,
+        extraBufferCapacity = 10,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
+    override val folderChatsFlow: Flow<FolderChatsUpdate> = _folderChatsFlow.asSharedFlow()
+
     private val _foldersFlow = MutableStateFlow(listOf(FolderModel(-1, "Все")))
     override val foldersFlow = _foldersFlow.asStateFlow()
 
     private val _isLoadingFlow = MutableStateFlow(false)
     override val isLoadingFlow = _isLoadingFlow.asStateFlow()
+
+    private val _folderLoadingFlow = MutableSharedFlow<FolderLoadingUpdate>(
+        replay = 1,
+        extraBufferCapacity = 10,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
+    override val folderLoadingFlow: Flow<FolderLoadingUpdate> = _folderLoadingFlow.asSharedFlow()
 
     override val connectionStateFlow = connectionManager.connectionStateFlow
 
@@ -128,8 +143,16 @@ class ChatsListRepositoryImpl(
     private var activeForumChatId: Long? = null
     private var myUserId: Long = 0L
 
+    @Volatile
+    private var activeFolderId: Int = -1
     @Volatile private var activeChatList: TdApi.ChatList = TdApi.ChatListMain()
+    @Volatile
+    private var activeRequestId: Long = 0L
+    private val requestIdGenerator = AtomicLong(0L)
+    private val cacheHydrated = CompletableDeferred<Unit>()
     private val updateChannel = Channel<Unit>(Channel.CONFLATED)
+    private var pendingSelectFolderJob: Job? = null
+    private val maxChatListLimit = 10_000
     private var currentLimit = 50
 
     private val lastSavedEntities = ConcurrentHashMap<Long, ChatEntity>()
@@ -137,6 +160,7 @@ class ChatsListRepositoryImpl(
     private val modelCache = ConcurrentHashMap<Long, ChatModel>()
     private val invalidatedModels = ConcurrentHashMap.newKeySet<Long>()
     private var lastList: List<ChatModel>? = null
+    private var lastListFolderId: Int = -1
 
     private val mainChatList = TdApi.ChatListMain()
 
@@ -146,14 +170,22 @@ class ChatsListRepositoryImpl(
         }
 
         scope.launch(dispatchers.io) {
-            val entities = chatLocalDataSource.getAllChats().first()
-            if (entities.isNotEmpty()) {
-                entities.forEach { entity ->
-                    cache.putChatFromEntity(entity)
-                    lastSavedEntities[entity.id] = entity
+            runCatching {
+                val entities = chatLocalDataSource.getAllChats().first()
+                if (entities.isNotEmpty()) {
+                    entities.forEach { entity ->
+                        cache.putChatFromEntity(entity)
+                        lastSavedEntities[entity.id] = entity
+                    }
+                    updateActiveListPositionsFromCache()
+                    triggerUpdate()
                 }
-                updateActiveListPositionsFromCache()
-                triggerUpdate()
+            }.onFailure { e ->
+                Log.e(TAG, "Failed to hydrate chat cache", e)
+            }
+
+            if (!cacheHydrated.isCompleted) {
+                cacheHydrated.complete(Unit)
             }
         }
 
@@ -185,7 +217,12 @@ class ChatsListRepositoryImpl(
 
     private suspend fun rebuildAndEmit() {
         runCatching {
-            val newList = listManager.rebuildChatList(currentLimit, emptyList()) { chat, order, isPinned ->
+            activeRequestId
+            val folderIdAtStart = activeFolderId
+            val limitAtStart = maxOf(currentLimit, cache.activeListPositions.size)
+                .coerceAtMost(maxChatListLimit)
+
+            val newList = listManager.rebuildChatList(limitAtStart, emptyList()) { chat, order, isPinned ->
                 val cached = modelCache[chat.id]
                 if (cached != null && cached.order == order && cached.isPinned == isPinned && !invalidatedModels.contains(
                         chat.id
@@ -199,9 +236,33 @@ class ChatsListRepositoryImpl(
                     }
                 }
             }
-            if (newList != lastList) {
+
+            if (folderIdAtStart != activeFolderId) {
+                return@runCatching
+            }
+
+            val folderChanged = folderIdAtStart != lastListFolderId
+            if (folderChanged || newList != lastList) {
+                val pinnedInPositions = cache.activeListPositions.entries
+                    .asSequence()
+                    .filter { it.value.isPinned }
+                    .map { it.key }
+                    .toSet()
+                val pinnedInList = newList.asSequence().filter { it.isPinned }.map { it.id }.toSet()
+                if (pinnedInPositions.size != pinnedInList.size) {
+                    Log.w(
+                        "PinnedDiag",
+                        "emit mismatch folder=$folderIdAtStart pinnedPositions=${pinnedInPositions.size} pinnedList=${pinnedInList.size} missingInList=${
+                            (pinnedInPositions - pinnedInList).take(
+                                10
+                            )
+                        }"
+                    )
+                }
                 _chatListFlow.value = newList
+                _folderChatsFlow.tryEmit(FolderChatsUpdate(folderIdAtStart, newList))
                 lastList = newList
+                lastListFolderId = folderIdAtStart
 
                 val toSave = newList.map { model ->
                     val chat = cache.getChat(model.id)
@@ -461,6 +522,7 @@ class ChatsListRepositoryImpl(
                 old.avatarPath != new.avatarPath ||
                 old.lastMessageText != new.lastMessageText ||
                 old.lastMessageTime != new.lastMessageTime ||
+                old.lastMessageDate != new.lastMessageDate ||
                 old.order != new.order ||
                 old.isPinned != new.isPinned ||
                 old.isMuted != new.isMuted ||
@@ -547,6 +609,16 @@ class ChatsListRepositoryImpl(
         updateChannel.trySend(Unit)
     }
 
+    private fun isRequestActive(folderId: Int, requestId: Long): Boolean {
+        return activeFolderId == folderId && activeRequestId == requestId
+    }
+
+    private fun setLoadingState(folderId: Int, requestId: Long, isLoading: Boolean) {
+        if (!isRequestActive(folderId, requestId)) return
+        _isLoadingFlow.value = isLoading
+        _folderLoadingFlow.tryEmit(FolderLoadingUpdate(folderId, isLoading))
+    }
+
     private fun refreshActiveForumTopics() {
         val chatId = activeForumChatId ?: return
         scope.launch { getForumTopics(chatId) }
@@ -557,57 +629,119 @@ class ChatsListRepositoryImpl(
     }
 
     override fun selectFolder(folderId: Int) {
+        if (!cacheHydrated.isCompleted) {
+            pendingSelectFolderJob?.cancel()
+            pendingSelectFolderJob = scope.launch(dispatchers.io) {
+                runCatching { cacheHydrated.await() }
+                    .onSuccess { selectFolder(folderId) }
+            }
+            return
+        }
+
+        pendingSelectFolderJob = null
         Log.d(TAG, "selectFolder: folderId=$folderId")
         val newList: TdApi.ChatList = when (folderId) {
             -1 -> TdApi.ChatListMain()
             -2 -> TdApi.ChatListArchive()
             else -> TdApi.ChatListFolder(folderId)
         }
-        if (listManager.isSameChatList(newList, activeChatList) && _chatListFlow.value.isNotEmpty()) {
-            Log.d(TAG, "selectFolder: already in this folder and list not empty, skipping")
+        if (folderId == activeFolderId &&
+            listManager.isSameChatList(newList, activeChatList) &&
+            activeRequestId != 0L
+        ) {
+            Log.d(TAG, "selectFolder: already initialized for this folder, skipping")
             return
         }
+
+        activeFolderId = folderId
         activeChatList = newList
-        currentLimit = 50
         updateActiveListPositionsFromCache()
-        Log.d(TAG, "selectFolder: initial cache positions count: ${cache.activeListPositions.size}")
-        _isLoadingFlow.value = true
+        val cachedChatsCount = cache.activeListPositions.size
+        val initialLoadLimit = cachedChatsCount.coerceAtLeast(50).coerceAtMost(maxChatListLimit)
+        currentLimit = initialLoadLimit
+
+        val requestId = requestIdGenerator.incrementAndGet()
+        activeRequestId = requestId
+        Log.d(
+            TAG,
+            "selectFolder: cache positions=$cachedChatsCount, initialLoadLimit=$initialLoadLimit"
+        )
+        setLoadingState(folderId, requestId, true)
         triggerUpdate()
+
         scope.launch(dispatchers.io) {
-            Log.d(TAG, "selectFolder: calling loadChats for $newList")
-            chatRemoteSource.loadChats(newList, 50)
-            _isLoadingFlow.value = false
+            Log.d(TAG, "selectFolder: calling loadChats for $newList with limit=$initialLoadLimit")
+            chatRemoteSource.loadChats(newList, initialLoadLimit)
+            val discoveredPositions = cache.activeListPositions.size
+            val expandedLimit = maxOf(currentLimit, discoveredPositions).coerceAtMost(maxChatListLimit)
+            if (expandedLimit != currentLimit) {
+                currentLimit = expandedLimit
+            }
+            setLoadingState(folderId, requestId, false)
             Log.d(TAG, "selectFolder: loadChats completed")
-            triggerUpdate()
+            if (isRequestActive(folderId, requestId)) {
+                triggerUpdate()
+            }
         }
     }
 
     private fun updateActiveListPositionsFromCache() {
         cache.activeListPositions.clear()
+        cache.authoritativeActiveListChatIds.clear()
+        cache.protectedPinnedChatIds.clear()
         cache.allChats.values.forEach { chat ->
             chat.positions.find { listManager.isSameChatList(it.list, activeChatList) }?.let {
-                if (it.order != 0L) cache.activeListPositions[chat.id] = it
+                if (it.order != 0L) {
+                    cache.activeListPositions[chat.id] = it
+                    if (it.isPinned) {
+                        cache.protectedPinnedChatIds.add(chat.id)
+                    }
+                }
             }
         }
     }
 
     override fun refresh() {
+        if (!cacheHydrated.isCompleted) {
+            scope.launch(dispatchers.io) {
+                runCatching { cacheHydrated.await() }
+                    .onSuccess { refresh() }
+            }
+            return
+        }
+
         retryConnection()
         updateActiveListPositionsFromCache()
         triggerUpdate()
+
+        val folderId = activeFolderId
+        val requestId = activeRequestId
+        val chatList = activeChatList
         scope.launch(dispatchers.io) {
-            val limit = currentLimit.coerceAtLeast(50)
-            chatRemoteSource.loadChats(activeChatList, limit)
-            triggerUpdate()
+            val limit = currentLimit.coerceAtLeast(50).coerceAtMost(maxChatListLimit)
+            chatRemoteSource.loadChats(chatList, limit)
+            if (isRequestActive(folderId, requestId)) {
+                triggerUpdate()
+            }
         }
     }
 
     override fun loadNextChunk(limit: Int) {
-        if (_isLoadingFlow.value || currentLimit >= 500) return
+        if (!cacheHydrated.isCompleted) return
+        if (_isLoadingFlow.value || currentLimit >= maxChatListLimit) return
         Log.d(TAG, "loadNextChunk: limit=$limit")
-        currentLimit += limit
-        _isLoadingFlow.value = true
+
+        val folderId = activeFolderId
+        val requestId = activeRequestId
+        val chatList = activeChatList
+        currentLimit = (currentLimit + limit).coerceAtMost(maxChatListLimit)
+        setLoadingState(folderId, requestId, true)
+
         scope.launch(dispatchers.io) {
+            if (!isRequestActive(folderId, requestId)) {
+                return@launch
+            }
+
             val currentCount = _chatListFlow.value.size
             if (currentCount < currentLimit) {
                 val totalAvailable = cache.activeListPositions.size
@@ -616,9 +750,11 @@ class ChatsListRepositoryImpl(
                 }
             }
 
-            chatRemoteSource.loadChats(activeChatList, limit)
-            _isLoadingFlow.value = false
-            triggerUpdate()
+            chatRemoteSource.loadChats(chatList, limit)
+            setLoadingState(folderId, requestId, false)
+            if (isRequestActive(folderId, requestId)) {
+                triggerUpdate()
+            }
         }
     }
 

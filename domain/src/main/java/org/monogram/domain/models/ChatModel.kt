@@ -12,6 +12,7 @@ data class ChatModel(
     val lastMessageText: String = "",
     val lastMessageEntities: List<MessageEntity> = emptyList(),
     val lastMessageTime: String = "",
+    val lastMessageDate: Long = 0L,
     val order: Long = 0L,
     val isGroup: Boolean = false,
     val memberCount: Int = 0,

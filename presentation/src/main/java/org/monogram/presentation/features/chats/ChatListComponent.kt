@@ -49,8 +49,6 @@ interface ChatListComponent {
 
     fun updateScrollPosition(folderId: Int, index: Int, offset: Int)
 
-    fun onResume()
-
     data class State(
         val chatsByFolder: Map<Int, List<ChatModel>> = emptyMap(),
         val folders: List<FolderModel> = emptyList(),

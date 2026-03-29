@@ -9,6 +9,8 @@ import org.monogram.data.datasource.cache.ChatLocalDataSource
 import org.monogram.data.datasource.cache.RoomUserLocalDataSource
 import org.monogram.data.datasource.cache.UserLocalDataSource
 import org.monogram.data.datasource.remote.UserRemoteDataSource
+import org.monogram.data.db.dao.KeyValueDao
+import org.monogram.data.db.model.KeyValueEntity
 import org.monogram.data.gateway.TelegramGateway
 import org.monogram.data.gateway.UpdateDispatcher
 import org.monogram.data.infra.FileDownloadQueue
@@ -27,6 +29,7 @@ class UserRepositoryImpl(
     private val gateway: TelegramGateway,
     private val updates: UpdateDispatcher,
     private val fileQueue: FileDownloadQueue,
+    private val keyValueDao: KeyValueDao,
     private val sponsorSyncManager: SponsorSyncManager,
     scopeProvider: ScopeProvider
 ) : UserRepository {
@@ -53,6 +56,10 @@ class UserRepositoryImpl(
     override val anyUserUpdateFlow = _userUpdateFlow.asSharedFlow()
 
     init {
+        scope.launch {
+            restoreCurrentUserFromLocal()
+        }
+
         scope.launch {
             updates.user.collect { update ->
                 userLocal.putUser(update.user)
@@ -107,6 +114,16 @@ class UserRepositoryImpl(
         }
     }
 
+    private suspend fun restoreCurrentUserFromLocal() {
+        val cachedUserId = keyValueDao.getValue(KEY_CURRENT_USER_ID)?.value?.toLongOrNull() ?: return
+        if (cachedUserId <= 0L) return
+
+        currentUserId = cachedUserId
+        val user = userLocal.getUser(cachedUserId) ?: return
+        val model = mapUserModel(user, userLocal.getUserFullInfo(cachedUserId))
+        _currentUserFlow.value = model
+    }
+
     private fun TdApi.User.extractEmojiStatusId(): Long {
         return when (val type = this.emojiStatus?.type) {
             is TdApi.EmojiStatusTypeCustomEmoji -> type.customEmojiId
@@ -159,6 +176,7 @@ class UserRepositoryImpl(
     override suspend fun getMe(): UserModel {
         val user = remote.getMe() ?: return UserModel(0, "Error")
         currentUserId = user.id
+        runCatching { keyValueDao.insertValue(KeyValueEntity(KEY_CURRENT_USER_ID, user.id.toString())) }
         userLocal.putUser(user)
         if (userLocal is RoomUserLocalDataSource) {
             val personalAvatarPath = resolveStoredPersonalAvatarPath(user.id)
@@ -588,6 +606,11 @@ class UserRepositoryImpl(
         if (userLocal is RoomUserLocalDataSource) {
             scope.launch { userLocal.clearDatabase() }
         }
+        scope.launch {
+            runCatching { keyValueDao.deleteValue(KEY_CURRENT_USER_ID) }
+            currentUserId = 0L
+            _currentUserFlow.value = null
+        }
         scope.launch { chatLocal.clearAll() }
     }
 
@@ -665,6 +688,7 @@ class UserRepositoryImpl(
             avatarPath = photo?.small?.local?.path,
             lastMessageText = (lastMessage?.content as? TdApi.MessageText)?.text?.text ?: "",
             lastMessageTime = (lastMessage?.date?.toLong() ?: 0L).toString(),
+            lastMessageDate = lastMessage?.date?.toLong() ?: 0L,
             order = positions.firstOrNull()?.order ?: 0L,
             isPinned = positions.firstOrNull()?.isPinned ?: false,
             isMuted = notificationSettings.muteFor > 0,
@@ -814,5 +838,6 @@ class UserRepositoryImpl(
 
     companion object {
         private const val NEGATIVE_CACHE_TTL_MS = 5 * 60 * 1000L
+        private const val KEY_CURRENT_USER_ID = "current_user_id"
     }
 }

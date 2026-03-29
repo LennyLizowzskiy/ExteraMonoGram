@@ -9,10 +9,22 @@ data class SearchMessagesResult(
     val nextOffset: String
 )
 
+data class FolderChatsUpdate(
+    val folderId: Int,
+    val chats: List<ChatModel>
+)
+
+data class FolderLoadingUpdate(
+    val folderId: Int,
+    val isLoading: Boolean
+)
+
 interface ChatsListRepository {
     val chatListFlow: StateFlow<List<ChatModel>>
+    val folderChatsFlow: Flow<FolderChatsUpdate>
     val foldersFlow: StateFlow<List<FolderModel>>
     val isLoadingFlow: StateFlow<Boolean>
+    val folderLoadingFlow: Flow<FolderLoadingUpdate>
     val connectionStateFlow: StateFlow<ConnectionStatus>
     val isArchivePinned: StateFlow<Boolean>
     val isArchiveAlwaysVisible: StateFlow<Boolean>

@@ -11,6 +11,7 @@ data class ChatEntity(
     val avatarPath: String?,
     val lastMessageText: String,
     val lastMessageTime: String,
+    val lastMessageDate: Long = 0L,
     val order: Long,
     val isPinned: Boolean,
     val isMuted: Boolean,

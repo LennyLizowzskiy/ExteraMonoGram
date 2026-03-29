@@ -41,7 +41,6 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -52,8 +51,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
 import androidx.window.core.layout.WindowWidthSizeClass
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -103,19 +100,6 @@ fun ChatListContent(component: ChatListComponent) {
             showStatusMenu = false
         } else {
             component.handleBack()
-        }
-    }
-
-    val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                component.onResume()
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
 
@@ -1017,8 +1001,12 @@ fun ChatListContent(component: ChatListComponent) {
                     modifier = Modifier.fillMaxSize(),
                     beyondViewportPageCount = 1
                 ) { page ->
-                    val folder = state.folders.getOrNull(page)
-                    val folderId = folder?.id ?: -1
+                    val folderId = state.folders.getOrNull(page)?.id
+                        ?: state.folders.firstOrNull { it.id == state.selectedFolderId }?.id
+                    if (folderId == null) {
+                        Box(modifier = Modifier.fillMaxSize())
+                        return@HorizontalPager
+                    }
                     val folderChats = state.chatsByFolder[folderId] ?: emptyList()
                     val isFolderLoading = state.isLoadingByFolder[folderId] ?: false
                     val hasFolderLoadState = state.isLoadingByFolder.containsKey(folderId)
