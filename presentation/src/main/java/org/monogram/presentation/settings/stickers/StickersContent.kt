@@ -19,6 +19,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.StickyNote2
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.EmojiEmotions
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.*
@@ -45,6 +46,7 @@ import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import org.monogram.domain.models.StickerSetModel
 import org.monogram.presentation.R
+import org.monogram.presentation.core.ui.ConfirmationSheet
 import org.monogram.presentation.core.ui.ItemPosition
 import org.monogram.presentation.core.ui.SettingsTile
 import org.monogram.presentation.core.ui.StickerSetItem
@@ -63,6 +65,8 @@ private enum class StickerTab(val titleRes: Int, val icon: ImageVector) {
 fun StickersContent(component: StickersComponent) {
     val state by component.state.subscribeAsState()
     var debouncedSearchQuery by remember { mutableStateOf("") }
+    var showClearRecentStickersSheet by remember { mutableStateOf(false) }
+    var showClearRecentEmojisSheet by remember { mutableStateOf(false) }
 
     LaunchedEffect(state.searchQuery) {
         if (state.searchQuery.isBlank()) {
@@ -219,7 +223,7 @@ fun StickersContent(component: StickersComponent) {
                                     clearRecentSubtitle = stringResource(R.string.clear_recent_stickers_subtitle),
                                     clearRecentIcon = Icons.AutoMirrored.Rounded.StickyNote2,
                                     clearRecentIconColor = orangeColor,
-                                    onClearRecent = component::onClearRecentStickers,
+                                    onClearRecent = { showClearRecentStickersSheet = true },
                                     onSetClick = component::onStickerSetClicked,
                                     onSetToggle = component::onToggleStickerSet,
                                     onSetArchive = component::onArchiveStickerSet,
@@ -257,7 +261,7 @@ fun StickersContent(component: StickersComponent) {
                                     clearRecentSubtitle = stringResource(R.string.clear_recent_emojis_subtitle_settings),
                                     clearRecentIcon = Icons.Rounded.EmojiEmotions,
                                     clearRecentIconColor = tealColor,
-                                    onClearRecent = component::onClearRecentEmojis,
+                                    onClearRecent = { showClearRecentEmojisSheet = true },
                                     onSetClick = component::onStickerSetClicked,
                                     onSetToggle = component::onToggleStickerSet,
                                     onSetArchive = component::onArchiveStickerSet,
@@ -293,6 +297,34 @@ fun StickersContent(component: StickersComponent) {
                     onDismiss = { component.onDismissMiniApp() }
                 )
             }
+        }
+
+        if (showClearRecentStickersSheet) {
+            ConfirmationSheet(
+                icon = Icons.Rounded.Delete,
+                title = stringResource(R.string.clear_recent_stickers_title),
+                description = stringResource(R.string.clear_recent_stickers_confirmation),
+                confirmText = stringResource(R.string.action_clear_recent_stickers),
+                onConfirm = {
+                    component.onClearRecentStickers()
+                    showClearRecentStickersSheet = false
+                },
+                onDismiss = { showClearRecentStickersSheet = false }
+            )
+        }
+
+        if (showClearRecentEmojisSheet) {
+            ConfirmationSheet(
+                icon = Icons.Rounded.Delete,
+                title = stringResource(R.string.clear_recent_emojis_title_settings),
+                description = stringResource(R.string.clear_recent_emojis_confirmation),
+                confirmText = stringResource(R.string.action_clear_recent_emojis),
+                onConfirm = {
+                    component.onClearRecentEmojis()
+                    showClearRecentEmojisSheet = false
+                },
+                onDismiss = { showClearRecentEmojisSheet = false }
+            )
         }
     }
 }

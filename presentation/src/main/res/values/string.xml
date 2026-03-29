@@ -642,10 +642,6 @@
     <string name="storage_usage_subtitle">Manage your local cache</string>
     <string name="network_usage_title">Network Usage</string>
     <string name="network_usage_subtitle">View data sent and received</string>
-    <string name="database_header">Database</string>
-    <string name="database_size_title">Database Size</string>
-    <string name="clear_database_title">Clear Database</string>
-    <string name="clear_database_subtitle">Delete all cached chats and messages</string>
     <string name="automatic_media_download_header">Automatic media download</string>
     <string name="when_using_mobile_data_title">When using mobile data</string>
     <string name="when_connected_on_wifi_title">When connected on Wi-Fi</string>
@@ -1812,4 +1808,31 @@
     <string name="recorder_time_format">Time: %1$s</string>
     <string name="recorder_zoom_format">Zoom: %1$.1fx (range %2$.1fx - %3$.1fx)</string>
     <string name="recorder_cancel">Cancel</string>
+
+    <string name="clear_history_title">Clear History?</string>
+    <string name="clear_history_confirmation">Are you sure you want to clear chat history? This action cannot be undone.</string>
+    <string name="action_clear_history">Clear History</string>
+    <string name="delete_chat_title">Delete Chat?</string>
+    <string name="delete_chat_confirmation">Are you sure you want to delete this chat? This action cannot be undone.</string>
+    <string name="action_delete_chat">Delete Chat</string>
+    <string name="leave_chat_title">Leave Chat?</string>
+    <string name="leave_chat_confirmation">Are you sure you want to leave this chat?</string>
+    <string name="action_leave">Leave</string>
+    <string name="delete_channel_title">Delete Channel?</string>
+    <string name="delete_group_title">Delete Group?</string>
+    <string name="delete_channel_confirmation">Are you sure you want to delete this channel? All messages and media will be lost.</string>
+    <string name="delete_group_confirmation">Are you sure you want to delete this group? All messages and media will be lost.</string>
+    <string name="delete_chats_title">Delete %1$d chats?</string>
+    <string name="delete_chats_confirmation">Are you sure you want to delete the selected chats?</string>
+    <string name="action_delete_chats">Delete Chats</string>
+    <string name="block_user_title">Block User?</string>
+    <string name="block_user_confirmation">Are you sure you want to block this user? This user will not be able to send you messages.</string>
+    <string name="action_block">Block</string>
+    <string name="unpin_message_title">Unpin message?</string>
+    <string name="unpin_message_confirmation">Are you sure you want to unpin this message?</string>
+    <string name="action_unpin">Unpin</string>
+    <string name="clear_recent_stickers_confirmation">Are you sure you want to clear recent stickers?</string>
+    <string name="action_clear_recent_stickers">Clear Stickers</string>
+    <string name="clear_recent_emojis_confirmation">Are you sure you want to clear recent emojis?</string>
+    <string name="action_clear_recent_emojis">Clear Emojis</string>
 </resources>

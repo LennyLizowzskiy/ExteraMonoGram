@@ -9,10 +9,14 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ExitToApp
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,6 +34,7 @@ import org.monogram.domain.models.UserStatusType
 import org.monogram.domain.models.UserTypeEnum
 import org.monogram.presentation.R
 import org.monogram.presentation.core.ui.CollapsingToolbarScaffold
+import org.monogram.presentation.core.ui.ConfirmationSheet
 import org.monogram.presentation.core.ui.rememberCollapsingToolbarScaffoldState
 import org.monogram.presentation.core.ui.rememberShimmerBrush
 import org.monogram.presentation.core.util.ScrollStrategy
@@ -141,6 +146,7 @@ fun ProfileContent(component: ProfileComponent) {
     }
     val canShareTopBar = !shareLink.isNullOrEmpty() || !fallbackShareText.isNullOrEmpty()
     val canReportTopBar = isGroupOrChannel && !isCurrentUserProfile
+    var showLeaveSheet by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
@@ -265,7 +271,7 @@ fun ProfileContent(component: ProfileComponent) {
                                     onToggleMute = component::onToggleMute,
                                     onShowQRCode = component::onShowQRCode,
                                     onEdit = component::onEdit,
-                                    onLeave = component::onLeave,
+                                    onLeave = { showLeaveSheet = true },
                                     onJoin = component::onJoinChat,
                                     onShowLogs = component::onShowLogs,
                                     onShowStatistics = component::onShowStatistics,
@@ -470,6 +476,20 @@ fun ProfileContent(component: ProfileComponent) {
             onDismiss = component::onDismissReport,
             onReport = component::onReport
         )
+
+        if (showLeaveSheet) {
+            ConfirmationSheet(
+                icon = Icons.AutoMirrored.Rounded.ExitToApp,
+                title = stringResource(R.string.leave_chat_title),
+                description = stringResource(R.string.leave_chat_confirmation),
+                confirmText = stringResource(R.string.action_leave),
+                onConfirm = {
+                    component.onLeave()
+                    showLeaveSheet = false
+                },
+                onDismiss = { showLeaveSheet = false }
+            )
+        }
 
         if (state.miniAppUrl == null) {
             ProfilePermissionsDialog(

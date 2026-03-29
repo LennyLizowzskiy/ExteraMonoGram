@@ -31,6 +31,7 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import org.monogram.presentation.R
 import org.monogram.presentation.core.ui.AvatarForChat
+import org.monogram.presentation.core.ui.ConfirmationSheet
 import org.monogram.presentation.core.ui.TypingDots
 import org.monogram.presentation.features.stickers.ui.menu.MenuOptionRow
 import org.monogram.presentation.features.stickers.ui.view.StickerImage
@@ -69,6 +70,8 @@ fun ChatTopBar(
     personalAvatarPath: String? = null
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    var showClearHistorySheet by remember { mutableStateOf(false) }
+    var showDeleteChatSheet by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxWidth()) {
         AnimatedContent(
@@ -333,7 +336,7 @@ fun ChatTopBar(
                                     title = stringResource(R.string.menu_clear_history),
                                     onClick = {
                                         showMenu = false
-                                        onClearHistory()
+                                        showClearHistorySheet = true
                                     }
                                 )
                             }
@@ -345,7 +348,7 @@ fun ChatTopBar(
                                     iconTint = MaterialTheme.colorScheme.error,
                                     onClick = {
                                         showMenu = false
-                                        onDeleteChat()
+                                        showDeleteChatSheet = true
                                     }
                                 )
                             }
@@ -363,6 +366,34 @@ fun ChatTopBar(
                     }
                 }
             }
+        }
+
+        if (showClearHistorySheet && onClearHistory != null) {
+            ConfirmationSheet(
+                icon = Icons.Rounded.CleaningServices,
+                title = stringResource(R.string.clear_history_title),
+                description = stringResource(R.string.clear_history_confirmation),
+                confirmText = stringResource(R.string.action_clear_history),
+                onConfirm = {
+                    onClearHistory()
+                    showClearHistorySheet = false
+                },
+                onDismiss = { showClearHistorySheet = false }
+            )
+        }
+
+        if (showDeleteChatSheet && onDeleteChat != null) {
+            ConfirmationSheet(
+                icon = Icons.Rounded.Delete,
+                title = stringResource(R.string.delete_chat_title),
+                description = stringResource(R.string.delete_chat_confirmation),
+                confirmText = stringResource(R.string.action_delete_chat),
+                onConfirm = {
+                    onDeleteChat()
+                    showDeleteChatSheet = false
+                },
+                onDismiss = { showDeleteChatSheet = false }
+            )
         }
     }
 }

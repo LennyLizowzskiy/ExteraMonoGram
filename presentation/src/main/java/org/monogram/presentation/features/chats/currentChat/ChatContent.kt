@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material3.*
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.*
@@ -52,6 +53,7 @@ import org.monogram.domain.models.MessageContent
 import org.monogram.domain.models.MessageModel
 import org.monogram.domain.models.ReplyMarkupModel
 import org.monogram.presentation.R
+import org.monogram.presentation.core.ui.ConfirmationSheet
 import org.monogram.presentation.features.chats.currentChat.chatContent.*
 import org.monogram.presentation.features.chats.currentChat.components.*
 import org.monogram.presentation.features.chats.currentChat.components.chats.BotCommandsSheet
@@ -122,6 +124,7 @@ fun ChatContent(
     var pendingMediaPaths by remember { mutableStateOf<List<String>>(emptyList()) }
     var editingPhotoPath by remember { mutableStateOf<String?>(null) }
     var editingVideoPath by remember { mutableStateOf<String?>(null) }
+    var pendingBlockUserId by remember { mutableStateOf<Long?>(null) }
 
     val groupedMessages by remember {
         derivedStateOf { groupMessagesByAlbum(displayMessages) }
@@ -1053,7 +1056,24 @@ fun ChatContent(
                         transformedMessageTexts[msg.id] = originalText
                         originalMessageTexts.remove(msg.id)
                     },
+                    onBlockRequest = { userId ->
+                        pendingBlockUserId = userId
+                    },
                     onDismiss = { selectedMessageId = null }
+                )
+            }
+
+            pendingBlockUserId?.let { userId ->
+                ConfirmationSheet(
+                    icon = Icons.Rounded.Block,
+                    title = stringResource(R.string.block_user_title),
+                    description = stringResource(R.string.block_user_confirmation),
+                    confirmText = stringResource(R.string.action_block),
+                    onConfirm = {
+                        component.onBlockUser(userId)
+                        pendingBlockUserId = null
+                    },
+                    onDismiss = { pendingBlockUserId = null }
                 )
             }
 

@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material3.*
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
@@ -60,6 +61,7 @@ import org.monogram.domain.models.ChatType
 import org.monogram.domain.repository.ConnectionStatus
 import org.monogram.presentation.R
 import org.monogram.presentation.core.ui.Avatar
+import org.monogram.presentation.core.ui.ConfirmationSheet
 import org.monogram.presentation.features.chats.ChatListComponent
 import org.monogram.presentation.features.chats.chatList.components.*
 import org.monogram.presentation.features.chats.currentChat.components.chats.getEmojiFontFamily
@@ -79,6 +81,7 @@ fun ChatListContent(component: ChatListComponent) {
 
     var showAccountMenu by remember { mutableStateOf(false) }
     var showStatusMenu by remember { mutableStateOf(false) }
+    var showDeleteChatsSheet by remember { mutableStateOf(false) }
     var statusAnchorBounds by remember { mutableStateOf<Rect?>(null) }
     val statusMenuTransitionState = remember { MutableTransitionState(false) }
 
@@ -429,7 +432,7 @@ fun ChatListContent(component: ChatListComponent) {
                             onPinClick = { },
                             onMuteClick = { component.onMuteSelected(true) },
                             onArchiveClick = { component.onArchiveSelected(true) },
-                            onDeleteClick = { component.onDeleteSelected() },
+                            onDeleteClick = { showDeleteChatsSheet = true },
                             onMoreClick = { }
                         )
                     } else {
@@ -1252,5 +1255,19 @@ fun ChatListContent(component: ChatListComponent) {
                 onDismiss = { component.onDismissWebApp() }
             )
         }
+    }
+
+    if (showDeleteChatsSheet) {
+        ConfirmationSheet(
+            icon = Icons.Rounded.Delete,
+            title = stringResource(R.string.delete_chats_title, state.selectedChatIds.size),
+            description = stringResource(R.string.delete_chats_confirmation),
+            confirmText = stringResource(R.string.action_delete_chats),
+            onConfirm = {
+                component.onDeleteSelected()
+                showDeleteChatsSheet = false
+            },
+            onDismiss = { showDeleteChatsSheet = false }
+        )
     }
 }

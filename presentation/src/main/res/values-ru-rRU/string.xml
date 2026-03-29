@@ -619,10 +619,6 @@
     <string name="storage_usage_subtitle">Управление локальным кэшем</string>
     <string name="network_usage_title">Использование сети</string>
     <string name="network_usage_subtitle">Объём отправленных и полученных данных</string>
-    <string name="database_header">База данных</string>
-    <string name="database_size_title">Размер базы данных</string>
-    <string name="clear_database_title">Очистить базу данных</string>
-    <string name="clear_database_subtitle">Удаление всех локальных чатов и сообщений</string>
     <string name="automatic_media_download_header">Автозагрузка медиа</string>
     <string name="when_using_mobile_data_title">Через мобильную сеть</string>
     <string name="when_connected_on_wifi_title">Через Wi-Fi</string>
@@ -1784,4 +1780,31 @@
     <string name="recorder_time_format">Время: %1$s</string>
     <string name="recorder_zoom_format">Зум: %1$.1fx (диапазон %2$.1fx - %3$.1fx)</string>
     <string name="recorder_cancel">Отмена</string>
+
+    <string name="clear_history_title">Очистить историю?</string>
+    <string name="clear_history_confirmation">Вы уверены, что хотите очистить историю чата? Это действие нельзя отменить.</string>
+    <string name="action_clear_history">Очистить историю</string>
+    <string name="delete_chat_title">Удалить чат?</string>
+    <string name="delete_chat_confirmation">Вы уверены, что хотите удалить этот чат? Это действие нельзя отменить.</string>
+    <string name="action_delete_chat">Удалить чат</string>
+    <string name="leave_chat_title">Покинуть чат?</string>
+    <string name="leave_chat_confirmation">Вы уверены, что хотите покинуть этот чат?</string>
+    <string name="action_leave">Покинуть</string>
+    <string name="delete_channel_title">Удалить канал?</string>
+    <string name="delete_group_title">Удалить группу?</string>
+    <string name="delete_channel_confirmation">Вы уверены, что хотите удалить этот канал? Все сообщения и медиа будут потеряны.</string>
+    <string name="delete_group_confirmation">Вы уверены, что хотите удалить эту группу? Все сообщения и медиа будут потеряны.</string>
+    <string name="delete_chats_title">Удалить %1$d чатов?</string>
+    <string name="delete_chats_confirmation">Вы уверены, что хотите удалить выбранные чаты?</string>
+    <string name="action_delete_chats">Удалить чаты</string>
+    <string name="block_user_title">Заблокировать пользователя?</string>
+    <string name="block_user_confirmation">Вы уверены, что хотите заблокировать этого пользователя? Он не сможет отправлять вам сообщения.</string>
+    <string name="action_block">Заблокировать</string>
+    <string name="unpin_message_title">Открепить сообщение?</string>
+    <string name="unpin_message_confirmation">Вы уверены, что хотите открепить это сообщение?</string>
+    <string name="action_unpin">Открепить</string>
+    <string name="clear_recent_stickers_confirmation">Вы уверены, что хотите очистить недавние стикеры?</string>
+    <string name="action_clear_recent_stickers">Очистить стикеры</string>
+    <string name="clear_recent_emojis_confirmation">Вы уверены, что хотите очистить недавние эмодзи?</string>
+    <string name="action_clear_recent_emojis">Очистить эмодзи</string>
 </resources>

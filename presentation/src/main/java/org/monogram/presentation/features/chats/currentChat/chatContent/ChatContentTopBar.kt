@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.Report
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -27,6 +28,7 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import org.monogram.domain.models.MessageModel
 import org.monogram.presentation.R
+import org.monogram.presentation.core.ui.ConfirmationSheet
 import org.monogram.presentation.core.util.rememberUserStatusText
 import org.monogram.presentation.features.chats.currentChat.ChatComponent
 import org.monogram.presentation.features.chats.currentChat.components.ChatTopBar
@@ -54,6 +56,7 @@ fun ChatContentTopBar(
             (otherUserId != null && state.currentUser?.id != otherUserId)
 
     var showDeleteSheet by remember { mutableStateOf(false) }
+    var pendingUnpinMessage by remember { mutableStateOf<MessageModel?>(null) }
 
     if (showDeleteSheet) {
         val selectedMessages = remember(state.messages, state.selectedMessageIds) {
@@ -71,6 +74,20 @@ fun ChatContentTopBar(
                 component.onDeleteSelectedMessages(revoke = revoke)
                 showDeleteSheet = false
             }
+        )
+    }
+
+    pendingUnpinMessage?.let { pinnedToUnpin ->
+        ConfirmationSheet(
+            icon = Icons.Rounded.PushPin,
+            title = stringResource(R.string.unpin_message_title),
+            description = stringResource(R.string.unpin_message_confirmation),
+            confirmText = stringResource(R.string.action_unpin),
+            onConfirm = {
+                component.onUnpinMessage(pinnedToUnpin)
+                pendingUnpinMessage = null
+            },
+            onDismiss = { pendingUnpinMessage = null }
         )
     }
 
@@ -263,7 +280,7 @@ fun ChatContentTopBar(
                     topicEmojiPath = topicEmojiPath,
                     isChannel = state.isChannel,
                     isWhitelistedInAdBlock = state.isWhitelistedInAdBlock,
-                    onToggleAdBlockWhitelist = if (isMainChat && state.isChannel && isAdBlockEnabled) {
+                    onToggleAdBlockWhitelist = if (isMainChat && state.isChannel && isAdBlockEnabled && !state.isInstalledFromGooglePlay) {
                         {
                             if (state.isWhitelistedInAdBlock) {
                                 component.onRemoveFromAdBlockWhitelist()
@@ -301,7 +318,7 @@ fun ChatContentTopBar(
                 PinnedMessageBar(
                     message = pinned,
                     count = state.pinnedMessageCount,
-                    onClose = { component.onUnpinMessage(pinned) },
+                    onClose = { pendingUnpinMessage = pinned },
                     onClick = { onPinnedMessageClick(pinned) },
                     onShowAll = { component.onShowAllPinnedMessages() }
                 )

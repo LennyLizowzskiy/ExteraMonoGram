@@ -42,6 +42,7 @@ fun ChatMessageOptionsMenu(
     canRestoreOriginalText: Boolean,
     onApplyTransformedText: (String) -> Unit,
     onRestoreOriginalText: () -> Unit,
+    onBlockRequest: (Long) -> Unit,
     onDismiss: () -> Unit
 ) {
     val messageRepository: MessageRepository = koinInject()
@@ -396,7 +397,7 @@ fun ChatMessageOptionsMenu(
         },
         onBlock = {
             if (selectedMessage.senderId > 0L) {
-                component.onBlockUser(selectedMessage.senderId)
+                onBlockRequest(selectedMessage.senderId)
             }
             onDismiss()
         },

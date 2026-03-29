@@ -15,6 +15,9 @@ import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -27,6 +30,7 @@ import androidx.compose.ui.unit.sp
 import com.arkivanov.decompose.extensions.compose.subscribeAsState
 import org.monogram.presentation.R
 import org.monogram.presentation.core.ui.Avatar
+import org.monogram.presentation.core.ui.ConfirmationSheet
 import org.monogram.presentation.core.util.FileUtils
 import org.monogram.presentation.features.chats.chatList.components.SettingsTextField
 import org.monogram.presentation.core.ui.ItemPosition
@@ -39,6 +43,7 @@ fun ChatEditContent(component: ChatEditComponent) {
     val state by component.state.subscribeAsState()
     val isChannel = state.chat?.isChannel == true
     val context = LocalContext.current
+    var showDeleteChatSheet by remember { mutableStateOf(false) }
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
@@ -233,7 +238,7 @@ fun ChatEditContent(component: ChatEditComponent) {
             item {
                 Spacer(Modifier.height(24.dp))
                 Button(
-                    onClick = component::onDeleteChat,
+                    onClick = { showDeleteChatSheet = true },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.errorContainer,
                         contentColor = MaterialTheme.colorScheme.error
@@ -251,6 +256,20 @@ fun ChatEditContent(component: ChatEditComponent) {
                 }
             }
         }
+    }
+
+    if (showDeleteChatSheet) {
+        ConfirmationSheet(
+            icon = Icons.Rounded.Delete,
+            title = if (isChannel) stringResource(R.string.delete_channel_title) else stringResource(R.string.delete_group_title),
+            description = if (isChannel) stringResource(R.string.delete_channel_confirmation) else stringResource(R.string.delete_group_confirmation),
+            confirmText = stringResource(R.string.action_delete),
+            onConfirm = {
+                component.onDeleteChat()
+                showDeleteChatSheet = false
+            },
+            onDismiss = { showDeleteChatSheet = false }
+        )
     }
 }
 

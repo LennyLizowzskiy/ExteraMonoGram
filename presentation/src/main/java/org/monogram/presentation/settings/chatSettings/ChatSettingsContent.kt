@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.arkivanov.decompose.extensions.compose.subscribeAsState
 import org.monogram.presentation.R
+import org.monogram.presentation.core.ui.ConfirmationSheet
 import org.monogram.presentation.core.ui.ItemPosition
 import org.monogram.presentation.core.ui.SettingsSwitchTile
 import org.monogram.presentation.core.ui.SettingsTile
@@ -57,6 +58,8 @@ fun ChatSettingsContent(component: ChatSettingsComponent) {
     var showStartTimePicker by remember { mutableStateOf(false) }
     var showEndTimePicker by remember { mutableStateOf(false) }
     var showThemeEditor by remember { mutableStateOf(false) }
+    var showClearRecentStickersSheet by remember { mutableStateOf(false) }
+    var showClearRecentEmojisSheet by remember { mutableStateOf(false) }
 
     if (showThemeEditor) {
         ChatThemeEditorScreen(
@@ -795,7 +798,7 @@ fun ChatSettingsContent(component: ChatSettingsComponent) {
                     subtitle = stringResource(R.string.clear_recent_stickers_subtitle),
                     iconColor = purpleColor,
                     position = ItemPosition.TOP,
-                    onClick = component::onClearRecentStickers
+                    onClick = { showClearRecentStickersSheet = true }
                 )
                 SettingsTile(
                     icon = Icons.Rounded.EmojiEmotions,
@@ -803,10 +806,38 @@ fun ChatSettingsContent(component: ChatSettingsComponent) {
                     subtitle = stringResource(R.string.clear_recent_emojis_subtitle),
                     iconColor = tealColor,
                     position = ItemPosition.BOTTOM,
-                    onClick = component::onClearRecentEmojis
+                    onClick = { showClearRecentEmojisSheet = true }
                 )
             }
         }
+    }
+
+    if (showClearRecentStickersSheet) {
+        ConfirmationSheet(
+            icon = Icons.Rounded.Delete,
+            title = stringResource(R.string.clear_recent_stickers_title),
+            description = stringResource(R.string.clear_recent_stickers_confirmation),
+            confirmText = stringResource(R.string.action_clear_recent_stickers),
+            onConfirm = {
+                component.onClearRecentStickers()
+                showClearRecentStickersSheet = false
+            },
+            onDismiss = { showClearRecentStickersSheet = false }
+        )
+    }
+
+    if (showClearRecentEmojisSheet) {
+        ConfirmationSheet(
+            icon = Icons.Rounded.Delete,
+            title = stringResource(R.string.clear_recent_emojis_title),
+            description = stringResource(R.string.clear_recent_emojis_confirmation),
+            confirmText = stringResource(R.string.action_clear_recent_emojis),
+            onConfirm = {
+                component.onClearRecentEmojis()
+                showClearRecentEmojisSheet = false
+            },
+            onDismiss = { showClearRecentEmojisSheet = false }
+        )
     }
 
     if (state.emojiPackToRemove != null) {
