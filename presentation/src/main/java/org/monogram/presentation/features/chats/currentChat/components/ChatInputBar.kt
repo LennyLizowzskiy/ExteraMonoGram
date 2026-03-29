@@ -1,20 +1,23 @@
 package org.monogram.presentation.features.chats.currentChat.components
 
 import android.Manifest
-import android.app.DatePickerDialog
-import android.app.TimePickerDialog
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import android.text.format.DateFormat
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -34,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.*
 import androidx.compose.ui.res.stringResource
@@ -61,6 +65,7 @@ import org.monogram.presentation.features.stickers.ui.menu.StickerEmojiMenu
 import java.io.File
 import java.io.FileOutputStream
 import java.util.*
+import kotlinx.coroutines.delay
 
 @Immutable
 data class ChatInputBarState(
@@ -172,6 +177,9 @@ fun ChatInputBar(
     var showFullScreenLanguageDialog by remember { mutableStateOf(false) }
     var fullScreenLanguageValue by remember { mutableStateOf("") }
     var showSendOptionsSheet by remember { mutableStateOf(false) }
+    var showScheduleDatePicker by remember { mutableStateOf(false) }
+    var showScheduleTimePicker by remember { mutableStateOf(false) }
+    var pendingScheduleDateMillis by remember { mutableStateOf<Long?>(null) }
     var showScheduledMessagesSheet by remember { mutableStateOf(false) }
 
     val knownCustomEmojis = remember { mutableStateMapOf<Long, StickerModel>() }
@@ -413,7 +421,7 @@ fun ChatInputBar(
         }
     }
 
-    BackHandler(enabled = isStickerMenuVisible || openStickerMenuAfterKeyboardClosed || openKeyboardAfterStickerMenuClosed || state.pendingMediaPaths.isNotEmpty() || showGallery || showCamera || showFullScreenEditor || showSendOptionsSheet || showScheduledMessagesSheet || showFullScreenEmojiPicker) {
+    BackHandler(enabled = isStickerMenuVisible || openStickerMenuAfterKeyboardClosed || openKeyboardAfterStickerMenuClosed || state.pendingMediaPaths.isNotEmpty() || showGallery || showCamera || showFullScreenEditor || showSendOptionsSheet || showScheduledMessagesSheet || showFullScreenEmojiPicker || showScheduleDatePicker || showScheduleTimePicker) {
         if (isGifSearchFocused) {
             focusManager.clearFocus()
         } else if (openStickerMenuAfterKeyboardClosed) {
@@ -425,6 +433,12 @@ fun ChatInputBar(
             isStickerMenuVisible = false
         } else if (showFullScreenEmojiPicker) {
             showFullScreenEmojiPicker = false
+        } else if (showScheduleTimePicker) {
+            showScheduleTimePicker = false
+            pendingScheduleDateMillis = null
+        } else if (showScheduleDatePicker) {
+            showScheduleDatePicker = false
+            pendingScheduleDateMillis = null
         } else if (showSendOptionsSheet) {
             showSendOptionsSheet = false
         } else if (showScheduledMessagesSheet) {
@@ -736,37 +750,59 @@ fun ChatInputBar(
 
                                 Spacer(modifier = Modifier.width(8.dp))
 
-                                InputBarSendButton(
-                                    textValue = textValue,
-                                    editingMessage = state.editingMessage,
-                                    pendingMediaPaths = state.pendingMediaPaths,
-                                    isOverCharLimit = isOverMessageLimit,
-                                    canWriteText = canWriteText,
-                                    canSendVoice = canSendVoice,
-                                    canSendMedia = canSendMedia,
-                                    isVideoMessageMode = isVideoMessageMode,
-                                    onSendWithOptions = sendWithOptions,
-                                    onShowSendOptionsMenu = {
-                                        openStickerMenuAfterKeyboardClosed = false
-                                        openKeyboardAfterStickerMenuClosed = false
-                                        closeStickerMenuWithoutSlide = false
-                                        isStickerMenuVisible = false
-                                        hideKeyboardAndClearFocus()
-                                        showSendOptionsSheet = true
-                                        actions.onRefreshScheduledMessages()
-                                    },
-                                    onCameraClick = {
-                                        hideKeyboardAndClearFocus()
-                                        actions.onCameraClick()
-                                    },
-                                    onVideoModeToggle = { isVideoMessageMode = !isVideoMessageMode },
-                                    onVoiceStart = {
-                                        hideKeyboardAndClearFocus()
-                                        voiceRecorder.startRecording()
-                                    },
-                                    onVoiceStop = { cancel -> voiceRecorder.stopRecording(cancel) },
-                                    onVoiceLock = { voiceRecorder.lockRecording() }
-                                )
+                                Box(contentAlignment = Alignment.CenterEnd) {
+                                    InputBarSendButton(
+                                        textValue = textValue,
+                                        editingMessage = state.editingMessage,
+                                        pendingMediaPaths = state.pendingMediaPaths,
+                                        isOverCharLimit = isOverMessageLimit,
+                                        canWriteText = canWriteText,
+                                        canSendVoice = canSendVoice,
+                                        canSendMedia = canSendMedia,
+                                        isVideoMessageMode = isVideoMessageMode,
+                                        onSendWithOptions = sendWithOptions,
+                                        onShowSendOptionsMenu = {
+                                            openStickerMenuAfterKeyboardClosed = false
+                                            openKeyboardAfterStickerMenuClosed = false
+                                            closeStickerMenuWithoutSlide = false
+                                            isStickerMenuVisible = false
+                                            hideKeyboardAndClearFocus()
+                                            showSendOptionsSheet = true
+                                            actions.onRefreshScheduledMessages()
+                                        },
+                                        onCameraClick = {
+                                            hideKeyboardAndClearFocus()
+                                            actions.onCameraClick()
+                                        },
+                                        onVideoModeToggle = { isVideoMessageMode = !isVideoMessageMode },
+                                        onVoiceStart = {
+                                            hideKeyboardAndClearFocus()
+                                            voiceRecorder.startRecording()
+                                        },
+                                        onVoiceStop = { cancel -> voiceRecorder.stopRecording(cancel) },
+                                        onVoiceLock = { voiceRecorder.lockRecording() }
+                                    )
+
+                                    SendOptionsPopup(
+                                        expanded = showSendOptionsSheet,
+                                        scheduledMessagesCount = state.scheduledMessages.size,
+                                        onDismiss = { showSendOptionsSheet = false },
+                                        onSendSilent = {
+                                            showSendOptionsSheet = false
+                                            sendWithOptions(MessageSendOptions(silent = true))
+                                        },
+                                        onScheduleMessage = {
+                                            showSendOptionsSheet = false
+                                            pendingScheduleDateMillis = null
+                                            showScheduleDatePicker = true
+                                        },
+                                        onOpenScheduledMessages = {
+                                            showSendOptionsSheet = false
+                                            showScheduledMessagesSheet = true
+                                            actions.onRefreshScheduledMessages()
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
@@ -1288,64 +1324,45 @@ fun ChatInputBar(
                         )
                     }
                 }
+
             }
 
-            if (showSendOptionsSheet) {
-                ModalBottomSheet(
-                    onDismissRequest = { showSendOptionsSheet = false }
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .navigationBarsPadding()
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                    ) {
-                        Button(
-                            onClick = {
-                                showSendOptionsSheet = false
-                                sendWithOptions(MessageSendOptions(silent = true))
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(text = stringResource(R.string.action_send_silent))
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Button(
-                            onClick = {
-                                showSendOptionsSheet = false
-                                pickScheduleDateTime(context) { scheduleDate ->
-                                    sendWithOptions(MessageSendOptions(scheduleDate = scheduleDate))
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(text = stringResource(R.string.action_schedule_message))
-                        }
-
-                        if (state.scheduledMessages.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            OutlinedButton(
-                                onClick = {
-                                    showSendOptionsSheet = false
-                                    showScheduledMessagesSheet = true
-                                    actions.onRefreshScheduledMessages()
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text(
-                                    text = stringResource(
-                                        R.string.action_scheduled_messages_count,
-                                        state.scheduledMessages.size
-                                    )
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
+            if (showScheduleDatePicker) {
+                ScheduleDatePickerDialog(
+                    onDismiss = {
+                        showScheduleDatePicker = false
+                        pendingScheduleDateMillis = null
+                    },
+                    onDateSelected = { selectedDateMillis ->
+                        pendingScheduleDateMillis = selectedDateMillis
+                        showScheduleDatePicker = false
+                        showScheduleTimePicker = true
                     }
+                )
+            }
+
+            if (showScheduleTimePicker) {
+                val defaultTime = remember {
+                    Calendar.getInstance().let { now -> now.get(Calendar.HOUR_OF_DAY) to now.get(Calendar.MINUTE) }
                 }
+
+                ScheduleTimePickerDialog(
+                    initialHour = defaultTime.first,
+                    initialMinute = defaultTime.second,
+                    onDismiss = {
+                        showScheduleTimePicker = false
+                        pendingScheduleDateMillis = null
+                    },
+                    onConfirm = { hour, minute ->
+                        val selectedDateMillis = pendingScheduleDateMillis
+                        pendingScheduleDateMillis = null
+                        showScheduleTimePicker = false
+                        if (selectedDateMillis != null) {
+                            val scheduleDate = buildScheduledDateEpochSeconds(selectedDateMillis, hour, minute)
+                            sendWithOptions(MessageSendOptions(scheduleDate = scheduleDate))
+                        }
+                    }
+                )
             }
 
             if (showScheduledMessagesSheet) {
@@ -1555,6 +1572,261 @@ private fun ClosedTopicBar() {
             overflow = TextOverflow.Ellipsis
         )
     }
+}
+
+@Composable
+private fun SendOptionsPopup(
+    expanded: Boolean,
+    scheduledMessagesCount: Int,
+    onDismiss: () -> Unit,
+    onSendSilent: () -> Unit,
+    onScheduleMessage: () -> Unit,
+    onOpenScheduledMessages: () -> Unit
+) {
+    var renderPopup by remember { mutableStateOf(expanded) }
+    var contentVisible by remember { mutableStateOf(false) }
+    val scrimAlpha by animateFloatAsState(
+        targetValue = if (contentVisible) 0.44f else 0f,
+        animationSpec = tween(durationMillis = 180),
+        label = "SendOptionsScrimAlpha"
+    )
+    val scrimColor = MaterialTheme.colorScheme.scrim.copy(alpha = scrimAlpha)
+
+    LaunchedEffect(expanded) {
+        if (expanded) {
+            renderPopup = true
+            contentVisible = true
+        } else if (renderPopup) {
+            contentVisible = false
+            delay(180)
+            renderPopup = false
+        }
+    }
+
+    if (!renderPopup) return
+
+    Dialog(
+        onDismissRequest = {
+            if (expanded) onDismiss()
+        },
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false
+        )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(scrimColor)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onDismiss
+                )
+        ) {
+            AnimatedVisibility(
+                visible = contentVisible,
+                enter = fadeIn(animationSpec = tween(180)) +
+                        slideInVertically(animationSpec = spring(dampingRatio = 0.82f, stiffness = 700f)) { it / 5 } +
+                        scaleIn(
+                            animationSpec = spring(dampingRatio = 0.86f, stiffness = 650f),
+                            initialScale = 0.92f,
+                            transformOrigin = TransformOrigin(1f, 1f)
+                        ),
+                exit = fadeOut(animationSpec = tween(140)) +
+                        slideOutVertically(animationSpec = tween(140)) { it / 8 } +
+                        scaleOut(
+                            animationSpec = tween(140),
+                            targetScale = 0.96f,
+                            transformOrigin = TransformOrigin(1f, 1f)
+                        ),
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 12.dp, bottom = 60.dp)
+            ) {
+                Surface(
+                    modifier = Modifier.widthIn(min = 220.dp, max = 260.dp),
+                    shape = RoundedCornerShape(22.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    tonalElevation = 8.dp,
+                    shadowElevation = 18.dp
+                ) {
+                    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                        AnimatedVisibility(
+                            visible = contentVisible,
+                            enter = fadeIn(animationSpec = tween(220, delayMillis = 35)) +
+                                    slideInVertically(animationSpec = tween(220, delayMillis = 35)) { it / 3 },
+                            exit = fadeOut(animationSpec = tween(90))
+                        ) {
+                            DropdownMenuItem(
+                                text = {
+                                    SendOptionsMenuLabel(
+                                        title = stringResource(R.string.action_send_silent)
+                                    )
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Outlined.NotificationsOff,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                },
+                                onClick = onSendSilent
+                            )
+                        }
+
+                        AnimatedVisibility(
+                            visible = contentVisible,
+                            enter = fadeIn(animationSpec = tween(220, delayMillis = 70)) +
+                                    slideInVertically(animationSpec = tween(220, delayMillis = 70)) { it / 3 },
+                            exit = fadeOut(animationSpec = tween(90))
+                        ) {
+                            DropdownMenuItem(
+                                text = {
+                                    SendOptionsMenuLabel(
+                                        title = stringResource(R.string.action_schedule_message),
+                                        subtitle = stringResource(R.string.cd_select_date) + " / " + stringResource(R.string.cd_select_time)
+                                    )
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Schedule,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                },
+                                onClick = onScheduleMessage
+                            )
+                        }
+
+                        if (scheduledMessagesCount > 0) {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(horizontal = 12.dp),
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                            )
+
+                            AnimatedVisibility(
+                                visible = contentVisible,
+                                enter = fadeIn(animationSpec = tween(220, delayMillis = 105)) +
+                                        slideInVertically(animationSpec = tween(220, delayMillis = 105)) { it / 3 },
+                                exit = fadeOut(animationSpec = tween(90))
+                            ) {
+                                DropdownMenuItem(
+                                    text = {
+                                        SendOptionsMenuLabel(
+                                            title = stringResource(
+                                                R.string.action_scheduled_messages_count,
+                                                scheduledMessagesCount
+                                            )
+                                        )
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Outlined.Subject,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    },
+                                    onClick = onOpenScheduledMessages
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SendOptionsMenuLabel(
+    title: String,
+    subtitle: String? = null
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        if (subtitle != null) {
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ScheduleDatePickerDialog(
+    onDismiss: () -> Unit,
+    onDateSelected: (Long) -> Unit
+) {
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = System.currentTimeMillis()
+    )
+
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(
+                enabled = datePickerState.selectedDateMillis != null,
+                onClick = {
+                    datePickerState.selectedDateMillis?.let(onDateSelected)
+                }
+            ) {
+                Text(text = stringResource(R.string.action_done))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(text = stringResource(R.string.action_cancel))
+            }
+        }
+    ) {
+        DatePicker(state = datePickerState)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ScheduleTimePickerDialog(
+    initialHour: Int,
+    initialMinute: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (Int, Int) -> Unit
+) {
+    val context = LocalContext.current
+    val is24HourFormat = remember(context) { DateFormat.is24HourFormat(context) }
+    val timePickerState = rememberTimePickerState(
+        initialHour = initialHour,
+        initialMinute = initialMinute,
+        is24Hour = is24HourFormat
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = stringResource(R.string.cd_select_time)) },
+        text = {
+            TimePicker(
+                state = timePickerState,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(timePickerState.hour, timePickerState.minute) }) {
+                Text(text = stringResource(R.string.action_done))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(text = stringResource(R.string.action_cancel))
+            }
+        }
+    )
 }
 
 @Composable
@@ -1817,38 +2089,27 @@ private fun formatScheduledTimestamp(epochSeconds: Int): String {
     }
 }
 
-private fun pickScheduleDateTime(context: Context, onSelected: (Int) -> Unit) {
-    val calendar = Calendar.getInstance()
-    DatePickerDialog(
-        context,
-        { _, year, month, dayOfMonth ->
-            TimePickerDialog(
-                context,
-                { _, hourOfDay, minute ->
-                    val selected = Calendar.getInstance().apply {
-                        set(Calendar.YEAR, year)
-                        set(Calendar.MONTH, month)
-                        set(Calendar.DAY_OF_MONTH, dayOfMonth)
-                        set(Calendar.HOUR_OF_DAY, hourOfDay)
-                        set(Calendar.MINUTE, minute)
-                        set(Calendar.SECOND, 0)
-                        set(Calendar.MILLISECOND, 0)
-                    }
-                    val now = Calendar.getInstance()
-                    if (selected.before(now)) {
-                        selected.timeInMillis = now.timeInMillis + 60_000L
-                    }
-                    onSelected((selected.timeInMillis / 1000L).toInt())
-                },
-                calendar.get(Calendar.HOUR_OF_DAY),
-                calendar.get(Calendar.MINUTE),
-                true
-            ).show()
-        },
-        calendar.get(Calendar.YEAR),
-        calendar.get(Calendar.MONTH),
-        calendar.get(Calendar.DAY_OF_MONTH)
-    ).show()
+private fun buildScheduledDateEpochSeconds(selectedDateMillis: Long, hour: Int, minute: Int): Int {
+    val utcDate = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
+        timeInMillis = selectedDateMillis
+    }
+
+    val selected = Calendar.getInstance().apply {
+        set(Calendar.YEAR, utcDate.get(Calendar.YEAR))
+        set(Calendar.MONTH, utcDate.get(Calendar.MONTH))
+        set(Calendar.DAY_OF_MONTH, utcDate.get(Calendar.DAY_OF_MONTH))
+        set(Calendar.HOUR_OF_DAY, hour)
+        set(Calendar.MINUTE, minute)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }
+
+    val now = Calendar.getInstance()
+    if (selected.before(now)) {
+        selected.timeInMillis = now.timeInMillis + 60_000L
+    }
+
+    return (selected.timeInMillis / 1000L).toInt()
 }
 
 private fun normalizeEditorUrl(raw: String): String? {
