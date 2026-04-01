@@ -1,9 +1,9 @@
 package org.monogram.presentation.features.webapp
 
-import org.monogram.presentation.core.util.coRunCatching
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.app.DownloadManager
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
@@ -18,7 +18,9 @@ import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.os.Looper
+import android.webkit.URLUtil
 import android.webkit.WebView
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
@@ -42,6 +44,7 @@ import org.monogram.domain.repository.LocationRepository
 import org.monogram.domain.repository.MessageRepository
 import org.monogram.domain.repository.UserRepository
 import org.monogram.presentation.R
+import org.monogram.presentation.core.util.coRunCatching
 import org.monogram.presentation.core.util.toHex
 import java.net.URLEncoder
 import java.security.SecureRandom
@@ -115,6 +118,11 @@ class MiniAppState(
     val biometricManager = BiometricManager.from(context)
     private val scope = CoroutineScope(Dispatchers.Main)
     private var pendingRequestedContact: String? = null
+    private var lastUserInteractionMs: Long = 0L
+
+    fun markUserInteraction() {
+        lastUserInteractionMs = System.currentTimeMillis()
+    }
 
     fun updateThemeParams(newParams: ThemeParams) {
         val oldParams = themeParams
@@ -362,7 +370,15 @@ class MiniAppState(
 
     fun createHost(secureStorage: Any?) = object : TelegramWebAppHost {
         override fun onOpenLink(url: String, tryBrowser: Boolean, tryInstantView: Boolean) {
-            val intent = Intent(Intent.ACTION_VIEW, url.toUri())
+            val intent = Intent(Intent.ACTION_VIEW, url.toUri()).apply {
+                addCategory(Intent.CATEGORY_BROWSABLE)
+                if (tryInstantView) {
+                    putExtra("android.support.customtabs.extra.EXTRA_ENABLE_INSTANT_APPS", true)
+                }
+                if (tryBrowser) {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+            }
             coRunCatching { context.startActivity(intent) }
         }
 
@@ -405,6 +421,12 @@ class MiniAppState(
                 val shortcutManager = context.getSystemService(ShortcutManager::class.java)
                 if (shortcutManager.isRequestPinShortcutSupported) {
                     val shortcutId = "webapp_$botUserId"
+                    val alreadyAdded = shortcutManager.pinnedShortcuts.any { it.id == shortcutId }
+                    if (alreadyAdded) {
+                        telegramProxy?.dispatchToWebView("home_screen_added", JSONObject().put("status", "added"))
+                        return
+                    }
+
                     val intent = Intent(context, context.javaClass).apply {
                         action = Intent.ACTION_VIEW
                         data = "tg://resolve?domain=$botName&startapp=true".toUri()
@@ -507,7 +529,21 @@ class MiniAppState(
         }
 
         override fun onRequestWriteAccess() {
-            telegramProxy?.dispatchToWebView("write_access_requested", JSONObject().put("status", "allowed"))
+            activeCustomMethod = CustomMethodRequest(
+                reqId = "req_write_access",
+                method = "web_app_request_write_access",
+                params = "",
+                title = "Allow Messages",
+                message = "Allow $botName to send you messages?",
+                onConfirm = {
+                    telegramProxy?.dispatchToWebView("write_access_requested", JSONObject().put("status", "allowed"))
+                    activeCustomMethod = null
+                },
+                onCancel = {
+                    telegramProxy?.dispatchToWebView("write_access_requested", JSONObject().put("status", "cancelled"))
+                    activeCustomMethod = null
+                }
+            )
         }
 
         override fun onSetupMainButton(
@@ -517,7 +553,8 @@ class MiniAppState(
             color: Int?,
             textColor: Int?,
             isProgressVisible: Boolean,
-            hasShineEffect: Boolean
+            hasShineEffect: Boolean,
+            iconCustomEmojiId: String?
         ) {
             mainButtonState = mainButtonState.copy(
                 isVisible = isVisible,
@@ -526,7 +563,8 @@ class MiniAppState(
                 color = color?.let { Color(it) },
                 textColor = textColor?.let { Color(it) },
                 isProgressVisible = isProgressVisible,
-                hasShineEffect = hasShineEffect
+                hasShineEffect = hasShineEffect,
+                iconCustomEmojiId = iconCustomEmojiId
             )
         }
 
@@ -538,7 +576,8 @@ class MiniAppState(
             textColor: Int?,
             isProgressVisible: Boolean,
             hasShineEffect: Boolean,
-            position: String
+            position: String,
+            iconCustomEmojiId: String?
         ) {
             secondaryButtonState = secondaryButtonState.copy(
                 isVisible = isVisible,
@@ -548,7 +587,8 @@ class MiniAppState(
                 textColor = textColor?.let { Color(it) },
                 isProgressVisible = isProgressVisible,
                 hasShineEffect = hasShineEffect,
-                position = position
+                position = position,
+                iconCustomEmojiId = iconCustomEmojiId
             )
         }
 
@@ -609,6 +649,12 @@ class MiniAppState(
         }
 
         override fun onReadClipboard(reqId: String) {
+            val canReadClipboard = System.currentTimeMillis() - lastUserInteractionMs <= 10_000
+            if (!canReadClipboard) {
+                telegramProxy?.dispatchToWebView("clipboard_text_received", JSONObject().put("req_id", reqId))
+                return
+            }
+
             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
             if (clipboard.hasPrimaryClip()) {
                 val text = clipboard.primaryClip?.getItemAt(0)?.text?.toString() ?: ""
@@ -627,7 +673,7 @@ class MiniAppState(
             } catch (e: Exception) {
                 JSONObject()
             }
-            secureStorage as? MiniAppSecureStorage
+            val storage = secureStorage as? MiniAppSecureStorage
 
             fun dispatchResult(result: Any?) {
                 telegramProxy?.dispatchToWebView(
@@ -649,67 +695,77 @@ class MiniAppState(
             }
 
             when (method) {
-                // TODO: Fix device storage and secure storage
+                "getRequestedContact" -> {
+                    if (pendingRequestedContact != null) {
+                        dispatchResult(pendingRequestedContact)
+                        pendingRequestedContact = null
+                    } else {
+                        dispatchResult("")
+                    }
+                }
 
-//                "getRequestedContact" -> {
-//                    if (pendingRequestedContact != null) {
-//                        dispatchResult(pendingRequestedContact)
-//                        pendingRequestedContact = null
-//                    } else {
-//                        dispatchResult("")
-//                    }
-//                }
-//
-//                // Device Storage
-//                "saveDeviceStorageValue" -> {
-//                    val key = paramsJson.optString("key")
-//                    val value = paramsJson.optString("value")
-//                    if (key.isNotEmpty()) {
-//                        botPreferences.saveWebappData(key, value)
-//                        dispatchResult(true)
-//                    } else dispatchError("INVALID_PARAMS")
-//                }
-//                "getDeviceStorageValue" -> dispatchResult(botPreferences.getWebappData(paramsJson.optString("key")))
-//                "getDeviceStorageValues" -> {
-//                    val keys = getKeysList(paramsJson, "keys")
-//                    dispatchResult(JSONObject(botPreferences.getWebappData(keys)))
-//                }
-//                "deleteDeviceStorageValue" -> {
-//                    botPreferences.deleteWebappData(paramsJson.optString("key"))
-//                    dispatchResult(true)
-//                }
-//                "deleteDeviceStorageValues" -> {
-//                    botPreferences.deleteWebappData(getKeysList(paramsJson, "keys"))
-//                    dispatchResult(true)
-//                }
-//                "getDeviceStorageKeys" -> {
-//                    val keys = botPreferences.getWebappDataKeys().filter { !it.startsWith("cloud_") }
-//                    dispatchResult(JSONArray(keys))
-//                }
-//
-//                // Secure Storage
-//                "saveSecureStorageValue" -> {
-//                    val key = paramsJson.optString("key")
-//                    val value = paramsJson.optString("value")
-//                    if (key.isNotEmpty() && storage != null) {
-//                        storage.save(key, value)
-//                        dispatchResult(true)
-//                    } else dispatchError("UNAVAILABLE")
-//                }
-//                "getSecureStorageValue" -> dispatchResult(storage?.get(paramsJson.optString("key")))
-//                "getSecureStorageValues" -> {
-//                    val keys = getKeysList(paramsJson, "keys")
-//                    dispatchResult(storage?.get(keys)?.let { JSONObject(it) })
-//                }
-//                "deleteSecureStorageValue" -> {
-//                    storage?.delete(paramsJson.optString("key"))
-//                    dispatchResult(true)
-//                }
-//                "deleteSecureStorageValues" -> {
-//                    storage?.delete(getKeysList(paramsJson, "keys"))
-//                    dispatchResult(true)
-//                }
-//                "getSecureStorageKeys" -> dispatchResult(storage?.getKeys()?.let { JSONArray(it) })
+                // Device Storage
+                "saveDeviceStorageValue" -> {
+                    val key = paramsJson.optString("key")
+                    val value = paramsJson.optString("value")
+                    if (key.isNotEmpty()) {
+                        botPreferences.saveWebappData(key, value)
+                        dispatchResult(true)
+                    } else {
+                        dispatchError("INVALID_PARAMS")
+                    }
+                }
+
+                "getDeviceStorageValue" -> dispatchResult(botPreferences.getWebappData(paramsJson.optString("key")))
+                "getDeviceStorageValues" -> {
+                    val keys = getKeysList(paramsJson, "keys")
+                    dispatchResult(JSONObject(botPreferences.getWebappData(keys)))
+                }
+
+                "deleteDeviceStorageValue" -> {
+                    botPreferences.deleteWebappData(paramsJson.optString("key"))
+                    dispatchResult(true)
+                }
+
+                "deleteDeviceStorageValues" -> {
+                    botPreferences.deleteWebappData(getKeysList(paramsJson, "keys"))
+                    dispatchResult(true)
+                }
+
+                "getDeviceStorageKeys" -> {
+                    val keys = botPreferences.getWebappDataKeys().filter { !it.startsWith("cloud_") }
+                    dispatchResult(JSONArray(keys))
+                }
+
+                // Secure Storage
+                "saveSecureStorageValue" -> {
+                    val key = paramsJson.optString("key")
+                    val value = paramsJson.optString("value")
+                    if (key.isNotEmpty() && storage != null) {
+                        storage.save(key, value)
+                        dispatchResult(true)
+                    } else {
+                        dispatchError("UNAVAILABLE")
+                    }
+                }
+
+                "getSecureStorageValue" -> dispatchResult(storage?.get(paramsJson.optString("key")))
+                "getSecureStorageValues" -> {
+                    val keys = getKeysList(paramsJson, "keys")
+                    dispatchResult(storage?.get(keys)?.let { JSONObject(it) })
+                }
+
+                "deleteSecureStorageValue" -> {
+                    storage?.delete(paramsJson.optString("key"))
+                    dispatchResult(true)
+                }
+
+                "deleteSecureStorageValues" -> {
+                    storage?.delete(getKeysList(paramsJson, "keys"))
+                    dispatchResult(true)
+                }
+
+                "getSecureStorageKeys" -> dispatchResult(storage?.getKeys()?.let { JSONArray(it) })
 
                 // Cloud Storage
                 "saveStorageValue" -> {
@@ -759,7 +815,56 @@ class MiniAppState(
         override fun onSendPreparedMessage(id: String) {}
 
         override fun onFileDownloadRequested(url: String, fileName: String) {
-            coRunCatching { context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri())) }
+            activeCustomMethod = CustomMethodRequest(
+                reqId = "req_file_download",
+                method = "web_app_request_file_download",
+                params = "",
+                title = "Download File",
+                message = "Download ${if (fileName.isBlank()) "this file" else fileName}?",
+                onConfirm = {
+                    val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as? DownloadManager
+                    if (downloadManager == null) {
+                        telegramProxy?.dispatchToWebView(
+                            "file_download_requested",
+                            JSONObject().put("status", "failed")
+                        )
+                        activeCustomMethod = null
+                    } else {
+                        val resolvedFileName = if (fileName.isBlank()) {
+                            URLUtil.guessFileName(url, null, null)
+                        } else {
+                            fileName
+                        }
+
+                        coRunCatching {
+                            val request = DownloadManager.Request(url.toUri())
+                                .setTitle(resolvedFileName)
+                                .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                                .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, resolvedFileName)
+
+                            downloadManager.enqueue(request)
+                            telegramProxy?.dispatchToWebView(
+                                "file_download_requested",
+                                JSONObject().put("status", "downloading")
+                            )
+                        }.onFailure {
+                            telegramProxy?.dispatchToWebView(
+                                "file_download_requested",
+                                JSONObject().put("status", "failed")
+                            )
+                        }
+                    }
+
+                    activeCustomMethod = null
+                },
+                onCancel = {
+                    telegramProxy?.dispatchToWebView(
+                        "file_download_requested",
+                        JSONObject().put("status", "cancelled")
+                    )
+                    activeCustomMethod = null
+                }
+            )
         }
 
         override fun onOpenLocationSettings() {
@@ -776,46 +881,115 @@ class MiniAppState(
 
         override fun onVerifyAge(age: Double) {}
 
-        override fun onDeviceStorageSave(key: String, value: String) {
+        override fun onDeviceStorageSave(reqId: String, key: String, value: String) {
+            if (key.isEmpty()) {
+                telegramProxy?.dispatchToWebView(
+                    "device_storage_failed",
+                    JSONObject().put("req_id", reqId).put("error", "KEY_INVALID")
+                )
+                return
+            }
+
             botPreferences.saveWebappData(key, value)
-            telegramProxy?.dispatchToWebView(
-                "device_storage_key_saved",
-                JSONObject().put("key", key).put("value", value)
-            )
+            telegramProxy?.dispatchToWebView("device_storage_key_saved", JSONObject().put("req_id", reqId))
         }
 
-        override fun onDeviceStorageGet(key: String) {
+        override fun onDeviceStorageGet(reqId: String, key: String) {
+            if (key.isEmpty()) {
+                telegramProxy?.dispatchToWebView(
+                    "device_storage_failed",
+                    JSONObject().put("req_id", reqId).put("error", "KEY_INVALID")
+                )
+                return
+            }
+
             val value = botPreferences.getWebappData(key)
             telegramProxy?.dispatchToWebView(
-                "device_storage_key_loaded",
-                JSONObject().put("key", key).put("value", value)
+                "device_storage_key_received",
+                JSONObject().put("req_id", reqId).put("value", value)
             )
         }
 
-        override fun onDeviceStorageDelete(key: String) {
+        override fun onDeviceStorageDelete(reqId: String, key: String) {
+            if (key.isEmpty()) {
+                telegramProxy?.dispatchToWebView(
+                    "device_storage_failed",
+                    JSONObject().put("req_id", reqId).put("error", "KEY_INVALID")
+                )
+                return
+            }
+
             botPreferences.deleteWebappData(key)
-            telegramProxy?.dispatchToWebView("device_storage_key_removed", JSONObject().put("key", key))
+            telegramProxy?.dispatchToWebView("device_storage_key_removed", JSONObject().put("req_id", reqId))
         }
 
-        override fun onSecureStorageSave(key: String, value: String) {
-            (secureStorage as? MiniAppSecureStorage)?.save(key, value)
+        override fun onSecureStorageSave(reqId: String, key: String, value: String) {
+            val storage = secureStorage as? MiniAppSecureStorage
+            if (key.isEmpty()) {
+                telegramProxy?.dispatchToWebView(
+                    "secure_storage_failed",
+                    JSONObject().put("req_id", reqId).put("error", "KEY_INVALID")
+                )
+                return
+            }
+
+            if (storage == null) {
+                telegramProxy?.dispatchToWebView(
+                    "secure_storage_failed",
+                    JSONObject().put("req_id", reqId).put("error", "UNAVAILABLE")
+                )
+                return
+            }
+
+            storage.save(key, value)
+            telegramProxy?.dispatchToWebView("secure_storage_key_saved", JSONObject().put("req_id", reqId))
+        }
+
+        override fun onSecureStorageGet(reqId: String, key: String) {
+            val storage = secureStorage as? MiniAppSecureStorage
+            if (key.isEmpty()) {
+                telegramProxy?.dispatchToWebView(
+                    "secure_storage_failed",
+                    JSONObject().put("req_id", reqId).put("error", "KEY_INVALID")
+                )
+                return
+            }
+
+            if (storage == null) {
+                telegramProxy?.dispatchToWebView(
+                    "secure_storage_failed",
+                    JSONObject().put("req_id", reqId).put("error", "UNAVAILABLE")
+                )
+                return
+            }
+
+            val value = storage.get(key)
             telegramProxy?.dispatchToWebView(
-                "secure_storage_key_saved",
-                JSONObject().put("key", key).put("value", value)
+                "secure_storage_key_received",
+                JSONObject().put("req_id", reqId).put("value", value)
             )
         }
 
-        override fun onSecureStorageGet(key: String) {
-            val value = (secureStorage as? MiniAppSecureStorage)?.get(key)
-            telegramProxy?.dispatchToWebView(
-                "secure_storage_key_loaded",
-                JSONObject().put("key", key).put("value", value)
-            )
-        }
+        override fun onSecureStorageDelete(reqId: String, key: String) {
+            val storage = secureStorage as? MiniAppSecureStorage
+            if (key.isEmpty()) {
+                telegramProxy?.dispatchToWebView(
+                    "secure_storage_failed",
+                    JSONObject().put("req_id", reqId).put("error", "KEY_INVALID")
+                )
+                return
+            }
 
-        override fun onSecureStorageDelete(key: String) {
-            (secureStorage as? MiniAppSecureStorage)?.delete(key)
-            telegramProxy?.dispatchToWebView("secure_storage_key_removed", JSONObject().put("key", key))
+            if (storage == null) {
+                telegramProxy?.dispatchToWebView(
+                    "secure_storage_failed",
+                    JSONObject().put("req_id", reqId).put("error", "UNAVAILABLE")
+                )
+                return
+            }
+
+            storage.delete(key)
+            telegramProxy?.dispatchToWebView("secure_storage_key_removed", JSONObject().put("req_id", reqId))
         }
 
         override fun onBiometryGetInfo() {

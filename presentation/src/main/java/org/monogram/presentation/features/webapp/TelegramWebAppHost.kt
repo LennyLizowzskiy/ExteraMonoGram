@@ -32,7 +32,8 @@ interface TelegramWebAppHost {
         color: Int?,
         textColor: Int?,
         isProgressVisible: Boolean,
-        hasShineEffect: Boolean
+        hasShineEffect: Boolean,
+        iconCustomEmojiId: String?
     )
 
     fun onSetupSecondaryButton(
@@ -43,7 +44,8 @@ interface TelegramWebAppHost {
         textColor: Int?,
         isProgressVisible: Boolean,
         hasShineEffect: Boolean,
-        position: String
+        position: String,
+        iconCustomEmojiId: String?
     )
 
     fun onSetBackButtonVisible(visible: Boolean)
@@ -66,12 +68,12 @@ interface TelegramWebAppHost {
     fun onFileDownloadRequested(url: String, fileName: String)
 
     // Storage (Device & Secure)
-    fun onDeviceStorageSave(key: String, value: String)
-    fun onDeviceStorageGet(key: String)
-    fun onDeviceStorageDelete(key: String)
-    fun onSecureStorageSave(key: String, value: String)
-    fun onSecureStorageGet(key: String)
-    fun onSecureStorageDelete(key: String)
+    fun onDeviceStorageSave(reqId: String, key: String, value: String)
+    fun onDeviceStorageGet(reqId: String, key: String)
+    fun onDeviceStorageDelete(reqId: String, key: String)
+    fun onSecureStorageSave(reqId: String, key: String, value: String)
+    fun onSecureStorageGet(reqId: String, key: String)
+    fun onSecureStorageDelete(reqId: String, key: String)
 
     // Biometry
     fun onBiometryGetInfo()

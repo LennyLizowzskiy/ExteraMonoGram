@@ -9,7 +9,8 @@ data class MainButtonState(
     val color: Color? = null,
     val textColor: Color? = null,
     val isProgressVisible: Boolean = false,
-    val hasShineEffect: Boolean = false
+    val hasShineEffect: Boolean = false,
+    val iconCustomEmojiId: String? = null
 )
 
 data class SecondaryButtonState(
@@ -20,7 +21,8 @@ data class SecondaryButtonState(
     val textColor: Color? = null,
     val isProgressVisible: Boolean = false,
     val hasShineEffect: Boolean = false,
-    val position: String = "left"
+    val position: String = "left",
+    val iconCustomEmojiId: String? = null
 )
 
 data class PopupButton(

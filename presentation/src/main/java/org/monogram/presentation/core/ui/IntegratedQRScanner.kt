@@ -8,8 +8,11 @@ import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.FlashOff
+import androidx.compose.material.icons.rounded.FlashOn
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.*
@@ -41,6 +44,7 @@ fun IntegratedQRScanner(
     }
 
     var lastScannedCode by remember { mutableStateOf("") }
+    var torchEnabled by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         val barcodeScanner = BarcodeScanning.getClient(
@@ -68,7 +72,9 @@ fun IntegratedQRScanner(
         cameraController.bindToLifecycle(lifecycleOwner)
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier
+        .fillMaxSize()
+        .statusBarsPadding()) {
         AndroidView(
             factory = { ctx ->
                 PreviewView(ctx).apply {
@@ -88,6 +94,22 @@ fun IntegratedQRScanner(
             Icon(
                 Icons.AutoMirrored.Rounded.ArrowBack,
                 contentDescription = stringResource(R.string.cd_close_scanner),
+                tint = Color.White
+            )
+        }
+
+        IconButton(
+            onClick = {
+                torchEnabled = !torchEnabled
+                cameraController.enableTorch(torchEnabled)
+            },
+            modifier = Modifier
+                .padding(16.dp)
+                .align(Alignment.TopEnd)
+        ) {
+            Icon(
+                imageVector = if (torchEnabled) Icons.Rounded.FlashOn else Icons.Rounded.FlashOff,
+                contentDescription = "Toggle flashlight",
                 tint = Color.White
             )
         }

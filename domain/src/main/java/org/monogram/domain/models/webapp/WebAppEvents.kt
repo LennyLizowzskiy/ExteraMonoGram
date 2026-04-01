@@ -17,7 +17,8 @@ sealed class WebAppEvent {
         val color: String?,
         val textColor: String?,
         val isProgressVisible: Boolean,
-        val hasShineEffect: Boolean
+        val hasShineEffect: Boolean,
+        val iconCustomEmojiId: String?
     ) : WebAppEvent()
 
     data class SetupSecondaryButton(
@@ -28,7 +29,8 @@ sealed class WebAppEvent {
         val textColor: String?,
         val isProgressVisible: Boolean,
         val hasShineEffect: Boolean,
-        val position: String
+        val position: String,
+        val iconCustomEmojiId: String?
     ) : WebAppEvent()
 
     data class SetupBackButton(val isVisible: Boolean) : WebAppEvent()
@@ -66,12 +68,12 @@ sealed class WebAppEvent {
     data class InvokeCustomMethod(val reqId: String, val method: String, val params: String) : WebAppEvent()
     data class SendPreparedMessage(val id: String) : WebAppEvent()
     data class RequestFileDownload(val url: String, val fileName: String) : WebAppEvent()
-    data class DeviceStorageSave(val key: String, val value: String) : WebAppEvent()
-    data class DeviceStorageGet(val key: String) : WebAppEvent()
-    data class DeviceStorageRemove(val key: String) : WebAppEvent()
-    data class SecureStorageSave(val key: String, val value: String) : WebAppEvent()
-    data class SecureStorageGet(val key: String) : WebAppEvent()
-    data class SecureStorageRemove(val key: String) : WebAppEvent()
+    data class DeviceStorageSave(val reqId: String, val key: String, val value: String) : WebAppEvent()
+    data class DeviceStorageGet(val reqId: String, val key: String) : WebAppEvent()
+    data class DeviceStorageRemove(val reqId: String, val key: String) : WebAppEvent()
+    data class SecureStorageSave(val reqId: String, val key: String, val value: String) : WebAppEvent()
+    data class SecureStorageGet(val reqId: String, val key: String) : WebAppEvent()
+    data class SecureStorageRemove(val reqId: String, val key: String) : WebAppEvent()
     data object BiometryGetInfo : WebAppEvent()
     data class BiometryRequestAccess(val reason: String?) : WebAppEvent()
     data class BiometryRequestAuth(val reason: String?) : WebAppEvent()

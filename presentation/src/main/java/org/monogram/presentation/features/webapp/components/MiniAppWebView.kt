@@ -1,29 +1,34 @@
 package org.monogram.presentation.features.webapp.components
 
-import org.monogram.presentation.core.util.coRunCatching
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.net.http.SslError
 import android.os.Build
+import android.view.MotionEvent
 import android.view.ViewGroup
 import android.webkit.*
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.core.graphics.toColorInt
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.graphics.toColorInt
 import org.monogram.domain.models.webapp.ThemeParams
+import org.monogram.presentation.core.util.coRunCatching
 import org.monogram.presentation.features.webapp.TelegramWebAppHost
 import org.monogram.presentation.features.webapp.TelegramWebviewProxy
+import androidx.compose.ui.graphics.Color as ComposeColor
 
 @Composable
 fun MiniAppWebView(
     url: String,
     acceptLanguage: String,
     themeParams: ThemeParams,
+    backgroundColor: ComposeColor?,
     host: TelegramWebAppHost,
+    onUserInteraction: () -> Unit,
     onWebViewCreated: (WebView, TelegramWebviewProxy) -> Unit,
     onProgressChanged: (Int) -> Unit,
     onLoadingChanged: (Boolean) -> Unit,
@@ -50,7 +55,15 @@ fun MiniAppWebView(
                         "Mozilla/5.0 (Linux; Android ${Build.VERSION.RELEASE}; ${Build.MODEL}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Mobile Safari/537.36 Telegram-Android/12.3.1 (Android; ${Build.MODEL}; SDK ${Build.VERSION.SDK_INT}; AVERAGE)"
                 }
 
-                setBackgroundColor(themeParams.backgroundColor?.toColorInt() ?: Color.TRANSPARENT)
+                setBackgroundColor(
+                    backgroundColor?.toArgb() ?: themeParams.backgroundColor?.toColorInt() ?: Color.TRANSPARENT
+                )
+                setOnTouchListener { _, event ->
+                    if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+                        onUserInteraction()
+                    }
+                    false
+                }
 
                 val bridge = TelegramWebviewProxy(
                     context = ctx,
@@ -114,7 +127,9 @@ fun MiniAppWebView(
         },
         modifier = modifier.then(Modifier.fillMaxSize()),
         update = { view ->
-            view.setBackgroundColor(themeParams.backgroundColor?.toColorInt() ?: Color.TRANSPARENT)
+            view.setBackgroundColor(
+                backgroundColor?.toArgb() ?: themeParams.backgroundColor?.toColorInt() ?: Color.TRANSPARENT
+            )
             if (url.isNotEmpty() && view.url != url) {
                 view.loadUrl(url, mapOf("Accept-Language" to acceptLanguage))
             }

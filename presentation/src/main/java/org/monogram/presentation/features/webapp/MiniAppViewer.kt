@@ -10,24 +10,10 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.displayCutout
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -45,21 +31,8 @@ import org.monogram.domain.repository.LocationRepository
 import org.monogram.domain.repository.MessageRepository
 import org.monogram.domain.repository.UserRepository
 import org.monogram.presentation.core.util.CryptoManager
-import org.monogram.presentation.features.webapp.components.InvoiceDialog
-import org.monogram.presentation.features.webapp.components.MiniAppBottomBar
-import org.monogram.presentation.features.webapp.components.MiniAppClosingConfirmationDialog
-import org.monogram.presentation.features.webapp.components.MiniAppCustomMethodDialog
-import org.monogram.presentation.features.webapp.components.MiniAppFullscreenControls
-import org.monogram.presentation.features.webapp.components.MiniAppLoadingView
-import org.monogram.presentation.features.webapp.components.MiniAppMenu
-import org.monogram.presentation.features.webapp.components.MiniAppPermissionDialog
-import org.monogram.presentation.features.webapp.components.MiniAppPermissionsBottomSheet
-import org.monogram.presentation.features.webapp.components.MiniAppPopupDialog
-import org.monogram.presentation.features.webapp.components.MiniAppQrScanner
-import org.monogram.presentation.features.webapp.components.MiniAppTOSBottomSheet
-import org.monogram.presentation.features.webapp.components.MiniAppTopBar
-import org.monogram.presentation.features.webapp.components.MiniAppWebView
-import java.util.Locale
+import org.monogram.presentation.features.webapp.components.*
+import java.util.*
 import kotlin.math.max
 
 private const val TAG = "MiniAppLog"
@@ -224,19 +197,28 @@ fun MiniAppViewer(
                 displayCutout.getRight(density, LayoutDirection.Ltr)
             ) else 0
 
-            val topDp = (topPx / density.density).toInt()
-            val bottomDp = (bottomPx / density.density).toInt()
-            val leftDp = (leftPx / density.density).toInt()
-            val rightDp = (rightPx / density.density).toInt()
+            val safeAreaTopDp = (topPx / density.density).toInt()
+            val safeAreaBottomDp = (bottomPx / density.density).toInt()
+            val safeAreaLeftDp = (leftPx / density.density).toInt()
+            val safeAreaRightDp = (rightPx / density.density).toInt()
 
-            JSONObject().apply {
-                put("top", topDp)
-                put("bottom", bottomDp)
-                put("left", leftDp)
-                put("right", rightDp)
+            val safeArea = JSONObject().apply {
+                put("top", safeAreaTopDp)
+                put("bottom", safeAreaBottomDp)
+                put("left", safeAreaLeftDp)
+                put("right", safeAreaRightDp)
             }
-        }.collect { safeArea ->
-            state.telegramProxy?.updateSafeAreas(safeArea, safeArea)
+
+            val contentSafeArea = JSONObject().apply {
+                put("top", safeAreaTopDp)
+                put("bottom", safeAreaBottomDp)
+                put("left", safeAreaLeftDp)
+                put("right", safeAreaRightDp)
+            }
+
+            safeArea to contentSafeArea
+        }.collect { (safeArea, contentSafeArea) ->
+            state.telegramProxy?.updateSafeAreas(safeArea, contentSafeArea)
         }
     }
 
@@ -417,7 +399,9 @@ fun MiniAppViewer(
                                 url = state.currentUrl,
                                 acceptLanguage = webAppLanguage,
                                 themeParams = state.themeParams,
+                                backgroundColor = state.backgroundColor,
                                 host = state.createHost(secureStorage),
+                                onUserInteraction = { state.markUserInteraction() },
                                 onWebViewCreated = { wv, proxy ->
                                     state.webView = wv
                                     state.telegramProxy = proxy

@@ -124,7 +124,8 @@ class TelegramWebviewProxy(
                 data.optBoolean("is_visible"), data.optBoolean("is_active"),
                 data.optString("text"), data.optString("color").takeIf { it.isNotEmpty() },
                 data.optString("text_color").takeIf { it.isNotEmpty() },
-                data.optBoolean("is_progress_visible"), data.optBoolean("has_shine_effect")
+                data.optBoolean("is_progress_visible"), data.optBoolean("has_shine_effect"),
+                data.optString("icon_custom_emoji_id").takeIf { it.isNotEmpty() }
             )
 
             "web_app_setup_secondary_button" -> WebAppEvent.SetupSecondaryButton(
@@ -132,7 +133,8 @@ class TelegramWebviewProxy(
                 data.optString("text"), data.optString("color").takeIf { it.isNotEmpty() },
                 data.optString("text_color").takeIf { it.isNotEmpty() },
                 data.optBoolean("is_progress_visible"), data.optBoolean("has_shine_effect"),
-                data.optString("position", "left")
+                data.optString("position", "left"),
+                data.optString("icon_custom_emoji_id").takeIf { it.isNotEmpty() }
             )
 
             "web_app_setup_back_button" -> WebAppEvent.SetupBackButton(data.optBoolean("is_visible"))
@@ -214,19 +216,35 @@ class TelegramWebviewProxy(
             )
 
             "web_app_device_storage_save_key" -> WebAppEvent.DeviceStorageSave(
+                data.getString("req_id"),
                 data.getString("key"),
                 data.getString("value")
             )
 
-            "web_app_device_storage_get_key" -> WebAppEvent.DeviceStorageGet(data.getString("key"))
-            "web_app_device_storage_remove_key" -> WebAppEvent.DeviceStorageRemove(data.getString("key"))
+            "web_app_device_storage_get_key" -> WebAppEvent.DeviceStorageGet(
+                data.getString("req_id"),
+                data.getString("key")
+            )
+
+            "web_app_device_storage_remove_key" -> WebAppEvent.DeviceStorageRemove(
+                data.getString("req_id"),
+                data.getString("key")
+            )
             "web_app_secure_storage_save_key" -> WebAppEvent.SecureStorageSave(
+                data.getString("req_id"),
                 data.getString("key"),
                 data.getString("value")
             )
 
-            "web_app_secure_storage_get_key" -> WebAppEvent.SecureStorageGet(data.getString("key"))
-            "web_app_secure_storage_remove_key" -> WebAppEvent.SecureStorageRemove(data.getString("key"))
+            "web_app_secure_storage_get_key" -> WebAppEvent.SecureStorageGet(
+                data.getString("req_id"),
+                data.getString("key")
+            )
+
+            "web_app_secure_storage_remove_key" -> WebAppEvent.SecureStorageRemove(
+                data.getString("req_id"),
+                data.getString("key")
+            )
             "web_app_biometry_get_info" -> WebAppEvent.BiometryGetInfo
             "web_app_biometry_request_access" -> WebAppEvent.BiometryRequestAccess(data.optString("reason"))
             "web_app_biometry_request_auth" -> WebAppEvent.BiometryRequestAuth(data.optString("reason"))
@@ -296,7 +314,8 @@ class TelegramWebviewProxy(
                 event.color?.let { parseColor(it) },
                 event.textColor?.let { parseColor(it) },
                 event.isProgressVisible,
-                event.hasShineEffect
+                event.hasShineEffect,
+                event.iconCustomEmojiId
             )
 
             is WebAppEvent.SetupSecondaryButton -> host.onSetupSecondaryButton(
@@ -307,7 +326,8 @@ class TelegramWebviewProxy(
                 event.textColor?.let { parseColor(it) },
                 event.isProgressVisible,
                 event.hasShineEffect,
-                event.position
+                event.position,
+                event.iconCustomEmojiId
             )
 
             is WebAppEvent.SetupBackButton -> host.onSetBackButtonVisible(event.isVisible)
@@ -354,12 +374,12 @@ class TelegramWebviewProxy(
             is WebAppEvent.InvokeCustomMethod -> host.onInvokeCustomMethod(event.reqId, event.method, event.params)
             is WebAppEvent.SendPreparedMessage -> host.onSendPreparedMessage(event.id)
             is WebAppEvent.RequestFileDownload -> host.onFileDownloadRequested(event.url, event.fileName)
-            is WebAppEvent.DeviceStorageSave -> host.onDeviceStorageSave(event.key, event.value)
-            is WebAppEvent.DeviceStorageGet -> host.onDeviceStorageGet(event.key)
-            is WebAppEvent.DeviceStorageRemove -> host.onDeviceStorageDelete(event.key)
-            is WebAppEvent.SecureStorageSave -> host.onSecureStorageSave(event.key, event.value)
-            is WebAppEvent.SecureStorageGet -> host.onSecureStorageGet(event.key)
-            is WebAppEvent.SecureStorageRemove -> host.onSecureStorageDelete(event.key)
+            is WebAppEvent.DeviceStorageSave -> host.onDeviceStorageSave(event.reqId, event.key, event.value)
+            is WebAppEvent.DeviceStorageGet -> host.onDeviceStorageGet(event.reqId, event.key)
+            is WebAppEvent.DeviceStorageRemove -> host.onDeviceStorageDelete(event.reqId, event.key)
+            is WebAppEvent.SecureStorageSave -> host.onSecureStorageSave(event.reqId, event.key, event.value)
+            is WebAppEvent.SecureStorageGet -> host.onSecureStorageGet(event.reqId, event.key)
+            is WebAppEvent.SecureStorageRemove -> host.onSecureStorageDelete(event.reqId, event.key)
             is WebAppEvent.BiometryGetInfo -> host.onBiometryGetInfo()
             is WebAppEvent.BiometryRequestAccess -> host.onBiometryRequestAccess(event.reason)
             is WebAppEvent.BiometryRequestAuth -> host.onBiometryRequestAuth(event.reason)
@@ -481,6 +501,12 @@ class TelegramWebviewProxy(
                 if (alpha < 0) alpha += 360.0
                 val beta = Math.toDegrees(orientation[1].toDouble())  // Pitch
                 val gamma = Math.toDegrees(orientation[2].toDouble()) // Roll
+
+                if (alpha.isNaN() || beta.isNaN() || gamma.isNaN() ||
+                    alpha.isInfinite() || beta.isInfinite() || gamma.isInfinite()
+                ) {
+                    return
+                }
 
                 val params = JSONObject()
                 params.put("alpha", alpha)
