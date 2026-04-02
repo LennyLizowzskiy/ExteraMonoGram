@@ -1,20 +1,17 @@
 package org.monogram.presentation.features.profile.components
 
 import android.content.Intent
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -65,6 +62,9 @@ private const val LOAD_MORE_THRESHOLD = 40
 @OptIn(ExperimentalFoundationApi::class)
 fun LazyGridScope.profileMediaSection(
     state: ProfileComponent.State,
+    pagerState: PagerState,
+    isGroup: Boolean,
+    tabs: MutableList<@Composable (() -> String)>,
     videoPlayerPool: VideoPlayerPool,
     onTabSelected: (Int) -> Unit,
     onMessageClick: (MessageModel) -> Unit,
@@ -74,17 +74,6 @@ fun LazyGridScope.profileMediaSection(
     onMemberLongClick: (Long) -> Unit = {},
     onLoadMedia: (MessageModel) -> Unit = {}
 ) {
-    val isGroup = state.chat?.isGroup == true || state.chat?.isChannel == true
-    val tabs = mutableListOf<@Composable () -> String>({ stringResource(R.string.tab_media) })
-    if (isGroup) tabs.add { stringResource(R.string.tab_members) }
-    tabs.addAll(listOf(
-        { stringResource(R.string.tab_files) },
-        { stringResource(R.string.tab_audio) },
-        { stringResource(R.string.tab_voice) },
-        { stringResource(R.string.tab_links) },
-        { stringResource(R.string.tab_gifs) }
-    ))
-
     stickyHeader {
         Surface(
             color = MaterialTheme.colorScheme.background,
@@ -113,7 +102,7 @@ fun LazyGridScope.profileMediaSection(
                         indicator = {
                             Box(
                                 Modifier
-                                    .tabIndicatorOffset(state.selectedTabIndex)
+                                    .tabIndicatorOffset(pagerState.currentPage)
                                     .fillMaxHeight()
                                     .padding(vertical = 4.dp)
                                     .zIndex(-1f)
@@ -123,7 +112,7 @@ fun LazyGridScope.profileMediaSection(
                         }
                     ) {
                         tabs.forEachIndexed { index, titleFunc ->
-                            val selected = state.selectedTabIndex == index
+                            val selected = pagerState.currentPage == index
 
                             Tab(
                                 selected = selected,
@@ -183,21 +172,20 @@ fun LazyGridScope.profileMediaSection(
     val canLoadMedia = state.canLoadMoreMedia
 
     item(span = { GridItemSpan(3) }) {
-        AnimatedContent(
-            targetState = state.selectedTabIndex,
-            transitionSpec = {
-                if (targetState > initialState) {
-                    slideInHorizontally { width -> width } + fadeIn() togetherWith
-                    slideOutHorizontally { width -> -width } + fadeOut()
-                } else {
-                    slideInHorizontally { width -> -width } + fadeIn() togetherWith
-                    slideOutHorizontally { width -> width } + fadeOut()
-                }
-            },
-            label = "tabs"
-        ) { tab ->
+        LaunchedEffect(state.selectedTabIndex) {
+            pagerState.animateScrollToPage(state.selectedTabIndex)
+        }
+        LaunchedEffect(pagerState.currentPage) {
+            if (state.selectedTabIndex != pagerState.currentPage) {
+                onTabSelected(pagerState.currentPage)
+            }
+        }
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxWidth()
+        ) { page ->
             ProfileTabContent(
-                tab = tab,
+                tab = page,
                 state = state,
                 videoPlayerPool = videoPlayerPool,
                 onLoadMore = onLoadMore,
@@ -338,7 +326,6 @@ fun ProfileTabContent(
         }
     }
 }
-
 
 @Composable
 private fun ScrollableRow(

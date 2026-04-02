@@ -23,7 +23,6 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.animateScrollBy
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Box
@@ -68,7 +67,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalClipboard
@@ -118,7 +116,6 @@ import org.monogram.presentation.features.chats.currentChat.components.chats.Pol
 import org.monogram.presentation.features.chats.currentChat.components.pins.PinnedMessagesListSheet
 import org.monogram.presentation.features.chats.currentChat.editor.photo.PhotoEditorScreen
 import org.monogram.presentation.features.chats.currentChat.editor.video.VideoEditorScreen
-import org.monogram.presentation.root.RootComponent
 import java.io.File
 import java.io.FileOutputStream
 import java.net.URLEncoder
@@ -129,8 +126,6 @@ import kotlin.math.abs
 fun ChatContent(
     component: ChatComponent,
     isOverlay: Boolean = false,
-    previousChild: RootComponent.Child? = null,
-    renderChild: @Composable (RootComponent.Child) -> Unit = {}
 ) {
     val state by component.state.collectAsState()
     val scrollState = rememberLazyListState()
@@ -492,7 +487,6 @@ fun ChatContent(
             (!state.viewAsTopics || state.currentTopicId != null)
 
     val isDragToBackEnabled by component.appPreferences.isDragToBackEnabled.collectAsState()
-    val dragOffsetX = remember { Animatable(0f) }
     var containerSize by remember { mutableStateOf(IntSize.Zero) }
 
     val isCustomBackHandlingEnabled =
@@ -505,7 +499,7 @@ fun ChatContent(
                 .background(MaterialTheme.colorScheme.background)
                 .onGloballyPositioned { containerSize = it.size }
         ) {
-            if (isDragToBackEnabled && !isTablet && !isCustomBackHandlingEnabled && dragOffsetX.value > 0 && previousChild != null) {
+            /*if (isDragToBackEnabled && !isTablet && !isCustomBackHandlingEnabled && dragOffsetX.value > 0 && previousChild != null) {
                 Box(
                     modifier = Modifier.fillMaxSize()
                 ) {
@@ -523,56 +517,11 @@ fun ChatContent(
                             )
                     )
                 }
-            }
+            }*/
 
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .then(
-                        if (isDragToBackEnabled && !isTablet && !isCustomBackHandlingEnabled) {
-                            Modifier.pointerInput(Unit) {
-                                var isDragging = false
-                                detectHorizontalDragGestures(
-                                    onDragStart = { offset ->
-                                        isDragging = offset.x > 48.dp.toPx()
-                                    },
-                                    onHorizontalDrag = { change, dragAmount ->
-                                        if (isDragging) {
-                                            change.consume()
-                                            coroutineScope.launch {
-                                                val newOffset = dragOffsetX.value + dragAmount
-                                                dragOffsetX.snapTo(newOffset.coerceAtLeast(0f))
-                                            }
-                                        }
-                                    },
-                                    onDragEnd = {
-                                        if (isDragging) {
-                                            val width = containerSize.width.toFloat()
-                                            coroutineScope.launch {
-                                                if (dragOffsetX.value > width * 0.15f) {
-                                                    dragOffsetX.animateTo(width, tween(200))
-                                                    component.onBackClicked()
-                                                } else {
-                                                    dragOffsetX.animateTo(0f, spring())
-                                                }
-                                            }
-                                            isDragging = false
-                                        }
-                                    },
-                                    onDragCancel = {
-                                        if (isDragging) {
-                                            coroutineScope.launch { dragOffsetX.animateTo(0f) }
-                                            isDragging = false
-                                        }
-                                    }
-                                )
-                            }
-                        } else Modifier
-                    )
-                    .graphicsLayer {
-                        translationX = dragOffsetX.value
-                        shadowElevation = if (dragOffsetX.value > 0) 20f else 0f
-                    }
             ) {
                 Box(
                     modifier = Modifier
