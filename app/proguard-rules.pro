@@ -2,10 +2,13 @@
 -allowaccessmodification
 -overloadaggressively
 
+-keepnames class org.monogram.**
+-keepnames class org.drinkless.tdlib.**
+
 -assumenosideeffects class android.util.Log {
     public static *** v(...);
+    public static *** d(...);
     public static *** i(...);
-    public static *** w(...);
 }
 
 -keepattributes SourceFile,LineNumberTable
