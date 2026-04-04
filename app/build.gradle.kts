@@ -2,7 +2,6 @@ import com.android.build.api.artifact.SingleArtifact
 import com.android.build.api.variant.FilterConfiguration
 import com.google.android.gms.oss.licenses.plugin.DependencyTask
 import com.google.gms.googleservices.GoogleServicesPlugin
-import kotlin.io.path.moveTo
 
 plugins {
     alias(libs.plugins.android.application)
@@ -93,7 +92,7 @@ androidComponents {
                         "monogram-$abi-${versionName}(${versionCode})-${buildType}.apk"
                     )
 
-                    originalApk.toPath().moveTo(targetFile.toPath(), overwrite = true)
+                    originalApk.copyTo(targetFile, overwrite = true)
                 }
             }
         }
